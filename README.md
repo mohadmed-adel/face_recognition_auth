@@ -351,6 +351,57 @@ We welcome contributions! Please feel free to submit a Pull Request. For major c
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
+## 👥 Contributors
+
+### Core Contributors
+
+<table>
+  <tr>
+    <td align="center">
+      <a href="https://github.com/mohadmed-adel">
+        <img src="https://avatars.githubusercontent.com/mohadmed-adel" width="100px;" alt="Mohamed Adel"/>
+        <br />
+        <sub><b>Mohamed Adel</b></sub>
+      </a>
+      <br />
+     <sub>Core Developer</sub>
+      <br />
+      <sub>Flutter & Android Expert</sub>
+    </td>
+    <td align="center">
+      <a href="https://github.com/mahmoud0saad">
+        <img src="https://avatars.githubusercontent.com/mahmoud0saad" width="100px;" alt="Mahmoud Saad"/>
+        <br />
+        <sub><b>Mahmoud Saad</b></sub>
+      </a>
+      <br />
+      <sub>Core Developer</sub>
+      <br />
+      <sub>Flutter & Android Expert</sub>
+    </td>
+  </tr>
+</table>
+
+### Team Expertise
+
+**Mohamed Adel** - Lead Developer & ML Specialist
+
+- TensorFlow Lite integration and optimization
+- Face recognition algorithms and ML models
+- Package architecture and core implementation
+- Documentation and technical writing
+
+**Mahmoud Saad** - Core Developer & Flutter Expert
+
+- Flutter development and cross-platform solutions
+- Android native development and camera integration
+- UI/UX implementation and state management
+- Performance optimization and testing
+
+### Contributing
+
+We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.md) for details.
+
 ## 🙏 Acknowledgments
 
 - **Google ML Kit** for face detection capabilities
