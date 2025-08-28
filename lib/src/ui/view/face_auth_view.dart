@@ -1,7 +1,6 @@
 import 'package:camera/camera.dart';
 import 'package:face_recognition_auth/src/ui/logic/face_auth_controller.dart';
-import 'package:face_recognition_auth/src/ui/view/widgets/FacePainter.dart';
-import 'package:face_recognition_auth/src/ui/view/widgets/face_box_painter.dart';
+import 'package:face_recognition_auth/src/ui/view/widgets/face_painter.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -26,11 +25,12 @@ class FaceAuthView extends StatelessWidget {
                 alignment: Alignment.center,
                 child: FittedBox(
                   fit: BoxFit.fitHeight,
-                  child: Container(
+                  child: SizedBox(
                     width: width,
-                    height:
-                        width *
-                        (ctrl.cameraService.cameraController?.value.aspectRatio ?? 1.0),
+                    height: width *
+                        (ctrl.cameraService.cameraController?.value
+                                .aspectRatio ??
+                            1.0),
                     child: Stack(
                       fit: StackFit.expand,
                       children: <Widget>[
@@ -40,7 +40,9 @@ class FaceAuthView extends StatelessWidget {
                           CustomPaint(
                             painter: FacePainter(
                               imageSize: ctrl.imageSize ?? Size.zero,
-                              face: (ctrl.faces?.isNotEmpty ?? false) ? ctrl.faces![0] : null,
+                              face: (ctrl.faces?.isNotEmpty ?? false)
+                                  ? ctrl.faces![0]
+                                  : null,
                             ),
                           ),
                       ],
@@ -51,10 +53,8 @@ class FaceAuthView extends StatelessWidget {
             ),
           );
           return body;
-        
         },
       ),
     );
   }
-   
 }
