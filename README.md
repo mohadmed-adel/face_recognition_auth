@@ -359,9 +359,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 📞 Support
 
-- **Issues**: [GitHub Issues](https://github.com/your-repo/face_recognition_auth/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/your-repo/face_recognition_auth/discussions)
-- **Email**: support@yourdomain.com
+- **Issues**: [GitHub Issues](https://github.com/mohadmed-adel/face_recognition_auth/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/mohadmed-adel/face_recognition_auth/discussions)
+- **Repository**: [GitHub Repository](https://github.com/mohadmed-adel/face_recognition_auth)
 
 ## 🔄 Changelog
 
@@ -372,3 +372,14 @@ See [CHANGELOG.md](CHANGELOG.md) for a list of changes and version history.
 **Made with ❤️ for the Flutter community**
 
 Transform your app's authentication with reliable face recognition that's easy to implement and customize!
+
+## 📦 Repository
+
+This package is available on [pub.dev](https://pub.dev/packages/face_recognition_auth) and the source code is hosted on [GitHub](https://github.com/mohadmed-adel/face_recognition_auth).
+
+### 📋 Requirements
+
+- Flutter 3.0+
+- Dart 2.17+
+- Android API level 21+
+- iOS 11.0+

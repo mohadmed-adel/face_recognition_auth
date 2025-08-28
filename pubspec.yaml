@@ -1,11 +1,25 @@
 name: face_recognition_auth
-description: "A new Flutter package project."
-version: 0.0.1
-homepage:
+description: "A powerful Flutter package that provides secure, reliable face recognition authentication using TensorFlow Lite and Google ML Kit. Implement face-based authentication in your Flutter apps with real-time face detection and a clean, customizable UI."
+version: 1.0.0
+homepage: https://github.com/mohadmed-adel/face_recognition_auth
+repository: https://github.com/mohadmed-adel/face_recognition_auth
+issue_tracker: https://github.com/mohadmed-adel/face_recognition_auth/issues
+documentation: https://github.com/mohadmed-adel/face_recognition_auth
+
+# Keywords for better discoverability on pub.dev
+keywords:
+  - authentication
+  - face-recognition
+  - biometric
+  - security
+  - tensorflow
+  - ml-kit
+  - camera
+  - flutter
 
 environment:
-  sdk: ^3.8.1
-  flutter: ">=1.17.0"
+  sdk: ">=3.0.0 <4.0.0"
+  flutter: ">=3.0.0"
 
 dependencies:
   flutter:
@@ -24,38 +38,8 @@ dev_dependencies:
     sdk: flutter
   flutter_lints: ^5.0.0
 
-# For information on the generic Dart part of this file, see the
-# following page: https://dart.dev/tools/pub/pubspec
-
-# The following section is specific to Flutter packages.
+# Flutter assets configuration
 flutter:
-  # To add assets to your package, add an assets section, like this:
+  # TensorFlow Lite model for face recognition
   assets:
     - assets/mobilefacenet.tflite
-
-  #
-  # For details regarding assets in packages, see
-  # https://flutter.dev/to/asset-from-package
-  #
-  # An image asset can refer to one or more resolution-specific "variants", see
-  # https://flutter.dev/to/resolution-aware-images
-
-  # To add custom fonts to your package, add a fonts section here,
-  # in this "flutter" section. Each entry in this list should have a
-  # "family" key with the font family name, and a "fonts" key with a
-  # list giving the asset and other descriptors for the font. For
-  # example:
-  # fonts:
-  #   - family: Schyler
-  #     fonts:
-  #       - asset: fonts/Schyler-Regular.ttf
-  #       - asset: fonts/Schyler-Italic.ttf
-  #         style: italic
-  #   - family: Trajan Pro
-  #     fonts:
-  #       - asset: fonts/TrajanPro.ttf
-  #       - asset: fonts/TrajanPro_Bold.ttf
-  #         weight: 700
-  #
-  # For details regarding fonts in packages, see
-  # https://flutter.dev/to/font-from-package
