@@ -8,18 +8,17 @@ Thank you to all the amazing people who have contributed to the face_recognition
 
 - **Mohamed Adel** - [@mohadmed-adel](https://github.com/mohadmed-adel)
   - Package architecture and core implementation
-  - TensorFlow Lite integration
-  - Face detection and recognition algorithms
-  - Documentation and examples
+  - Face recognition integration and algorithms
+  - Documentation and technical writing
+  - Project management and coordination
 
 ### Core Developer
 
 - **Mahmoud Saad** - [@mahmoud0saad](https://github.com/mahmoud0saad)
-  - UI/UX implementation and Flutter development
-  - Camera integration and Android native development
-  - State management and app architecture
-  - Testing, optimization, and performance tuning
-  - Cross-platform development (Android/iOS)
+  - Flutter development and UI implementation
+  - Camera integration and state management
+  - Testing and performance optimization
+  - Cross-platform development
 
 ## How to Contribute
 

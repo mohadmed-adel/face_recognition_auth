@@ -357,16 +357,16 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 <table>
   <tr>
-    <td align="center">
+        <td align="center">
       <a href="https://github.com/mohadmed-adel">
         <img src="https://avatars.githubusercontent.com/mohadmed-adel" width="100px;" alt="Mohamed Adel"/>
         <br />
         <sub><b>Mohamed Adel</b></sub>
       </a>
       <br />
-     <sub>Core Developer</sub>
+      <sub>Lead Developer</sub>
       <br />
-      <sub>Flutter & Android Expert</sub>
+      <sub>Flutter Developer</sub>
     </td>
     <td align="center">
       <a href="https://github.com/mahmoud0saad">
@@ -377,26 +377,26 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
       <br />
       <sub>Core Developer</sub>
       <br />
-      <sub>Flutter & Android Expert</sub>
+      <sub>Flutter Developer</sub>
     </td>
   </tr>
 </table>
 
 ### Team Expertise
 
-**Mohamed Adel** - Lead Developer & ML Specialist
+**Mohamed Adel** - Lead Developer
 
-- TensorFlow Lite integration and optimization
-- Face recognition algorithms and ML models
 - Package architecture and core implementation
+- Face recognition integration and algorithms
 - Documentation and technical writing
+- Project management and coordination
 
-**Mahmoud Saad** - Core Developer & Flutter Expert
+**Mahmoud Saad** - Core Developer
 
-- Flutter development and cross-platform solutions
-- Android native development and camera integration
-- UI/UX implementation and state management
-- Performance optimization and testing
+- Flutter development and UI implementation
+- Camera integration and state management
+- Testing and performance optimization
+- Cross-platform development
 
 ### Contributing
 
