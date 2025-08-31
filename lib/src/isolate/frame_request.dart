@@ -8,12 +8,14 @@ class FrameRequest {
   CameraImage? image;
   final Face? face;
   final int requiredSamples;
+  final String? userId;
 
   FrameRequest({
-      this.imageCropped,
-      this.image,
+    this.imageCropped,
+    this.image,
     required this.face,
     required this.requiredSamples,
+    this.userId,
   });
 }
 

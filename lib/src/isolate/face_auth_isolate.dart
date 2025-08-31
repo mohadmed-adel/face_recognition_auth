@@ -49,6 +49,7 @@ class FaceAuthIsolate {
     Duration timeout = const Duration(seconds: 20),
     FaceAuthProgress? onProgress,
     FaceDetectionCallback? onFaceDetected,
+    required String userId,
   }) async {
     if (!_initialized) await initialize();
 
@@ -118,6 +119,7 @@ class FaceAuthIsolate {
             image: image,
             face: face,
             requiredSamples: requiredSamples,
+            userId: userId,
           ),
         );
         if (!_cameraService.cameraController!.value.isStreamingImages) return;
@@ -227,6 +229,30 @@ class FaceAuthIsolate {
 
   Future deleteDatabase() async {
     await _database.deleteAll();
+  }
+
+  /// Check if a user exists by ID
+  Future<bool> userExists(String userId) async {
+    if (!_initialized) await initialize();
+    return await _database.userExists(userId);
+  }
+
+  /// Get user by ID
+  Future<User?> getUserById(String userId) async {
+    if (!_initialized) await initialize();
+    return await _database.getUserById(userId);
+  }
+
+  /// Delete user by ID
+  Future<int> deleteUser(String userId) async {
+    if (!_initialized) await initialize();
+    return await _database.deleteUser(userId);
+  }
+
+  /// Get all registered users
+  Future<List<User>> getAllUsers() async {
+    if (!_initialized) await initialize();
+    return await _database.queryAllUsers();
   }
 
   imglib.Image _cropFace(CameraImage image, Face faceDetected) {

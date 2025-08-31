@@ -30,6 +30,7 @@ class FaceAuthController extends ChangeNotifier {
     int samples = 4,
     void Function(User? user)? onDone,
     FaceAuthProgress? onProgress,
+    required String userId,
   }) async {
     _resetUser();
     _setState(FaceAuthState.cameraOpened);
@@ -42,6 +43,7 @@ class FaceAuthController extends ChangeNotifier {
           onProgress?.call(data);
         },
         onFaceDetected: _updateFace,
+        userId: userId,
       );
 
       _setState(FaceAuthState.success);
@@ -125,4 +127,24 @@ class FaceAuthController extends ChangeNotifier {
         cameraService.cameraController!.value.previewSize!.height,
         cameraService.cameraController!.value.previewSize!.width,
       );
+
+  /// Check if a user exists by ID
+  Future<bool> userExists(String userId) async {
+    return await _faceAuth.userExists(userId);
+  }
+
+  /// Get user by ID
+  Future<User?> getUserById(String userId) async {
+    return await _faceAuth.getUserById(userId);
+  }
+
+  /// Delete user by ID
+  Future<int> deleteUser(String userId) async {
+    return await _faceAuth.deleteUser(userId);
+  }
+
+  /// Get all registered users
+  Future<List<User>> getAllUsers() async {
+    return await _faceAuth.getAllUsers();
+  }
 }

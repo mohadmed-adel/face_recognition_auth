@@ -4,16 +4,19 @@ class User {
   String id;
   List modelData;
 
-  User({this.id = "N/A", required this.modelData});
+  User({required this.id, required this.modelData});
 
   static User fromMap(Map<String, dynamic> user) {
     return User(
-      id: (jsonDecode(user['id'].toString())).toString(),
+      id: user['id'].toString(),
       modelData: jsonDecode(user['model_data']),
     );
   }
 
   toMap() {
-    return {'model_data': jsonEncode(modelData)};
+    return {
+      "id": id,
+      'model_data': jsonEncode(modelData),
+    };
   }
 }

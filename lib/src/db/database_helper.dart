@@ -36,8 +36,7 @@ class DatabaseHelper {
   Future _onCreate(Database db, int version) async {
     await db.execute('''
           CREATE TABLE $table (
-            $columnId INTEGER PRIMARY KEY,
-           
+            $columnId TEXT PRIMARY KEY,
             $columnModelData TEXT NOT NULL
           )
           ''');
@@ -57,5 +56,43 @@ class DatabaseHelper {
   Future<int> deleteAll() async {
     Database db = await instance.database;
     return await db.delete(table);
+  }
+
+  /// Check if a user exists by ID
+  Future<bool> userExists(String userId) async {
+    Database db = await instance.database;
+    final result = await db.query(
+      table,
+      where: '$columnId = ?',
+      whereArgs: [userId],
+      limit: 1,
+    );
+    return result.isNotEmpty;
+  }
+
+  /// Get user by ID
+  Future<User?> getUserById(String userId) async {
+    Database db = await instance.database;
+    final result = await db.query(
+      table,
+      where: '$columnId = ?',
+      whereArgs: [userId],
+      limit: 1,
+    );
+
+    if (result.isNotEmpty) {
+      return User.fromMap(result.first);
+    }
+    return null;
+  }
+
+  /// Delete user by ID
+  Future<int> deleteUser(String userId) async {
+    Database db = await instance.database;
+    return await db.delete(
+      table,
+      where: '$columnId = ?',
+      whereArgs: [userId],
+    );
   }
 }

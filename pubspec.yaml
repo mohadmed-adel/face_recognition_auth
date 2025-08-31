@@ -1,6 +1,6 @@
 name: face_recognition_auth
 description: "A powerful Flutter package that provides secure, reliable face recognition authentication using TensorFlow Lite and Google ML Kit. Implement face-based authentication in your Flutter apps with real-time face detection and a clean, customizable UI."
-version: 1.0.0
+version: 1.0.1
 homepage: https://github.com/mohadmed-adel/face_recognition_auth
 repository: https://github.com/mohadmed-adel/face_recognition_auth
 issue_tracker: https://github.com/mohadmed-adel/face_recognition_auth/issues

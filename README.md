@@ -11,6 +11,7 @@ A powerful Flutter package that provides secure, reliable face recognition authe
 - **Quality Assessment**: Intelligent face quality scoring to prevent poor registrations
 - **Stable Detection**: Requires consecutive stable frames for reliable authentication
 - **Embedding Validation**: Ensures consistency between face embeddings
+- **User ID Management**: Custom user ID support with duplicate checking and validation
 
 ### 🎨 **Clean & Customizable UI**
 
@@ -113,6 +114,7 @@ class _FaceRegistrationScreenState extends State<FaceRegistrationScreen> {
 
     _controller.register(
       samples: 4,
+      userId: "user_123", // Unique user identifier
       onProgress: (state) {
         setState(() {
           switch (state) {
@@ -228,6 +230,7 @@ class _FaceLoginScreenState extends State<FaceLoginScreen> {
 // Customize quality thresholds
 _controller.register(
   samples: 6, // More samples for higher accuracy
+  userId: "custom_user_id", // Unique user identifier
   onProgress: (state) {
     // Custom progress handling
   },
@@ -302,10 +305,70 @@ Main controller for face authentication operations.
 ```dart
 class FaceAuthController extends ChangeNotifier {
   Future<void> initialize();
-  Future<void> register({int samples, Function onProgress, Function onDone});
+  Future<void> register({int samples, String userId, Function onProgress, Function onDone});
   Future<void> login({Function onProgress, Function onDone});
+  Future<bool> userExists(String userId);
+  Future<User?> getUserById(String userId);
+  Future<int> deleteUser(String userId);
+  Future<List<User>> getAllUsers();
   void dispose();
 }
+```
+
+### Database Operations
+
+The package uses SQLite for local storage of face embeddings and user data.
+
+```dart
+// Get database helper instance
+final db = DatabaseHelper.instance;
+
+// Check if a user exists
+final exists = await db.userExists('user_123');
+if (exists) {
+  print('User already exists');
+}
+
+// Get user by ID
+final user = await db.getUserById('user_123');
+if (user != null) {
+  print('Found user: ${user.id}');
+}
+
+// Delete specific user
+await db.deleteUser('user_123');
+
+// Query all registered users
+final users = await db.queryAllUsers();
+
+// Delete all users
+await db.deleteAll();
+```
+
+### Using FaceAuthController for Database Operations
+
+```dart
+final controller = FaceAuthController();
+await controller.initialize();
+
+// Check if user exists
+final exists = await controller.userExists('user_123');
+if (exists) {
+  print('User exists');
+}
+
+// Get user details
+final user = await controller.getUserById('user_123');
+if (user != null) {
+  print('User: ${user.id} with ${user.modelData.length} embeddings');
+}
+
+// Delete specific user
+await controller.deleteUser('user_123');
+
+// Get all users
+final allUsers = await controller.getAllUsers();
+print('Total users: ${allUsers.length}');
 ```
 
 ### FaceAuthView

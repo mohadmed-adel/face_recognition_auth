@@ -6,8 +6,8 @@ import 'package:face_recognition_auth/face_recognition_auth.dart';
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 
 typedef FaceAuthProgress = void Function(FaceAuthState state);
-typedef FaceDetectionCallback =
-    void Function(List<Face>? faces, CameraImage image);
+typedef FaceDetectionCallback = void Function(
+    List<Face>? faces, CameraImage image);
 
 enum FaceAuthState {
   cameraOpened,
@@ -54,6 +54,7 @@ class FaceAuth {
     Duration timeout = const Duration(seconds: 20),
     FaceAuthProgress? onProgress,
     FaceDetectionCallback? onFaceDetected,
+    required String userId,
   }) async {
     if (!_initialized) await initialize();
     if (_processing) throw StateError('Another operation in progress');
@@ -110,18 +111,26 @@ class FaceAuth {
         onProgress?.call(FaceAuthState.collectingSamples);
 
         if (samples.length >= requiredSamples) {
+          // Check if user ID already exists
+          final userExists = await _database.userExists(userId);
+          if (userExists) {
+            finishError(StateError("User ID already exists: $userId"));
+            _detectFaceProcessing = false;
+            return;
+          }
+
+          // Check if face is already registered (by face embedding)
           final centroid = _mlService.centroidFromSamples(samples);
           final predicted = await _mlService.predictFromEmbedding(centroid);
           if (predicted != null) {
             finishError(StateError("Face already registered"));
-
             _detectFaceProcessing = false;
-
             return;
           }
 
-          int id = await _database.insert(User(modelData: samples));
-          finishOk(User(modelData: samples, id: id.toString()));
+          // Insert new user
+          await _database.insert(User(id: userId, modelData: samples));
+          finishOk(User(modelData: samples, id: userId));
         }
       } catch (e) {
         finishError(e);
@@ -217,5 +226,29 @@ class FaceAuth {
 
   Future deleteDatabase() async {
     await _database.deleteAll();
+  }
+
+  /// Check if a user exists by ID
+  Future<bool> userExists(String userId) async {
+    if (!_initialized) await initialize();
+    return await _database.userExists(userId);
+  }
+
+  /// Get user by ID
+  Future<User?> getUserById(String userId) async {
+    if (!_initialized) await initialize();
+    return await _database.getUserById(userId);
+  }
+
+  /// Delete user by ID
+  Future<int> deleteUser(String userId) async {
+    if (!_initialized) await initialize();
+    return await _database.deleteUser(userId);
+  }
+
+  /// Get all registered users
+  Future<List<User>> getAllUsers() async {
+    if (!_initialized) await initialize();
+    return await _database.queryAllUsers();
   }
 }

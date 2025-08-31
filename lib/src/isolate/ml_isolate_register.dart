@@ -10,17 +10,17 @@ void mlRegisterWorkerEntry(SendPort mainSendPort) {
   final port = ReceivePort();
   mainSendPort.send(port.sendPort);
 
-  MLService _mlService = MLService();
-  late DatabaseHelper _database;
+  MLService mlService = MLService();
+  late DatabaseHelper database;
   List<List<num>> samples = [];
 
   port.listen((message) async {
     // ========= (١)   init =========
     if (message[0] is Uint8List) {
       final Uint8List modelBytes = message[0];
-      await _mlService.initializeFromBytes(modelBytes);
+      await mlService.initializeFromBytes(modelBytes);
       BackgroundIsolateBinaryMessenger.ensureInitialized(message[1]!);
-      _database = DatabaseHelper.instance;
+      database = DatabaseHelper.instance;
       return;
     }
 
@@ -35,17 +35,34 @@ void mlRegisterWorkerEntry(SendPort mainSendPort) {
         return;
       }
       if (request.image == null) return;
-      _mlService.setCurrentPrediction(request.image!, request.face);
-      final emb = List.from(_mlService.predictedData);
+      mlService.setCurrentPrediction(request.image!, request.face);
+      final emb = List.from(mlService.predictedData);
       request.image = null;
 
       samples.add(emb.cast<num>());
       // onProgress?.call(FaceAuthState.collectingSamples);
       if (samples.length >= request.requiredSamples) {
-        final centroid = _mlService.centroidFromSamples(samples);
-        final predicted = await _mlService.predictFromEmbedding(centroid);
+        final userId =
+            request.userId ?? "user_${DateTime.now().millisecondsSinceEpoch}";
+
+        // Check if user ID already exists
+        final userExists = await database.userExists(userId);
+        if (userExists) {
+          replyPort.send(
+            FrameResponse(
+              user: null,
+              success: false,
+              msg: 'User ID already exists: $userId',
+            ),
+          );
+          samples.clear();
+          return;
+        }
+
+        // Check if face is already registered (by face embedding)
+        final centroid = mlService.centroidFromSamples(samples);
+        final predicted = await mlService.predictFromEmbedding(centroid);
         if (predicted != null) {
-          
           replyPort.send(
             FrameResponse(
               user: null,
@@ -54,15 +71,22 @@ void mlRegisterWorkerEntry(SendPort mainSendPort) {
             ),
           );
           samples.clear();
-
           return;
         }
-        int id = await _database.insert(User(modelData: samples));
+
+        // Insert new user
+        await database.insert(
+          User(
+            modelData: samples,
+            id: userId,
+          ),
+        );
+
         replyPort.send(
           FrameResponse(
-            user: User(modelData: samples, id: id.toString()),
+            user: User(modelData: samples, id: userId),
             success: true,
-            msg: 'success',
+            msg: 'User registered successfully with ID: $userId',
           ),
         );
         samples.clear();
