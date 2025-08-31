@@ -10,14 +10,14 @@ void mlLoginWorkerEntry(SendPort mainSendPort) {
   final port = ReceivePort();
   mainSendPort.send(port.sendPort);
 
-  MLService _mlService = MLService();
+  MLService mlService = MLService();
   List<List<num>> samples = [];
 
   port.listen((message) async {
     // ========= (١)   init =========
     if (message[0] is Uint8List) {
       final Uint8List modelBytes = message[0];
-      await _mlService.initializeFromBytes(modelBytes);
+      await mlService.initializeFromBytes(modelBytes);
       BackgroundIsolateBinaryMessenger.ensureInitialized(message[1]!);
 
       return;
@@ -36,16 +36,16 @@ void mlLoginWorkerEntry(SendPort mainSendPort) {
       }
 
       if (request.image == null) return;
-      _mlService.setCurrentPrediction(request.image!, request.face);
-      final emb = List.from(_mlService.predictedData);
+      mlService.setCurrentPrediction(request.image!, request.face);
+      final emb = List.from(mlService.predictedData);
       request.image = null;
       if (emb.isEmpty) return;
 
       samples.add(emb.cast<num>()); //
 
       if (samples.length >= request.requiredSamples) {
-        final centroid = _mlService.centroidFromSamples(samples);
-        final user = await _mlService.predictFromEmbedding(centroid);
+        final centroid = mlService.centroidFromSamples(samples);
+        final user = await mlService.predictFromEmbedding(centroid);
         if (user != null) {
           samples.clear();
 

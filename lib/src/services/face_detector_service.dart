@@ -36,9 +36,8 @@ class FaceDetectorService {
     );
 
     // Build byte buffer. On Android, provide NV21; on iOS, use planes[0] (bgra).
-    final Uint8List bytes = Platform.isAndroid
-        ? _toNv21(image)
-        : image.planes[0].bytes;
+    final Uint8List bytes =
+        Platform.isAndroid ? _toNv21(image) : image.planes[0].bytes;
 
     InputImage firebaseVisionImage = InputImage.fromBytes(
       bytes: bytes,
@@ -60,15 +59,13 @@ class FaceDetectorService {
     for (final Plane plane in image.planes) {
       allBytes.putUint8List(plane.bytes);
     }
-    final bytes = allBytes.done().buffer.asUint8List();
 
     final Size imageSize = Size(
       image.width.toDouble(),
       image.height.toDouble(),
     );
-    final inputImageFormat = Platform.isAndroid
-        ? InputImageFormat.nv21
-        : InputImageFormat.bgra8888;
+    final inputImageFormat =
+        Platform.isAndroid ? InputImageFormat.nv21 : InputImageFormat.bgra8888;
 
     final inputImageData = InputImageMetadata(
       size: imageSize,

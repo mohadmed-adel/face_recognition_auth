@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
+
 class FacePainter extends CustomPainter {
   FacePainter({required this.imageSize, required this.face});
   final Size imageSize;
@@ -11,7 +12,7 @@ class FacePainter extends CustomPainter {
 
     Paint paint;
 
-    if (this.face!.headEulerAngleY! > 10 || this.face!.headEulerAngleY! < -10) {
+    if (face!.headEulerAngleY! > 10 || face!.headEulerAngleY! < -10) {
       paint = Paint()
         ..style = PaintingStyle.stroke
         ..strokeWidth = 3.0

@@ -6,7 +6,6 @@ import 'package:face_recognition_auth/face_recognition_auth.dart';
 import 'package:face_recognition_auth/src/isolate/frame_request.dart';
 import 'package:face_recognition_auth/src/isolate/isolate_helper.dart';
 import 'package:flutter/services.dart';
-import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 import 'package:image/image.dart' as imglib;
 
 class FaceAuthIsolate {
@@ -159,7 +158,6 @@ class FaceAuthIsolate {
     if (_processing) throw StateError('Another operation in progress');
     _processing = true;
 
-    final List<List<num>> samples = [];
     final completer = Completer<User?>();
     Timer? watchdog;
 
@@ -253,21 +251,6 @@ class FaceAuthIsolate {
   Future<List<User>> getAllUsers() async {
     if (!_initialized) await initialize();
     return await _database.queryAllUsers();
-  }
-
-  imglib.Image _cropFace(CameraImage image, Face faceDetected) {
-    imglib.Image convertedImage = _convertCameraImage(image);
-    double x = faceDetected.boundingBox.left - 10.0;
-    double y = faceDetected.boundingBox.top - 10.0;
-    double w = faceDetected.boundingBox.width + 10.0;
-    double h = faceDetected.boundingBox.height + 10.0;
-    return imglib.copyCrop(
-      convertedImage,
-      x: x.round(),
-      y: y.round(),
-      width: w.round(),
-      height: h.round(),
-    );
   }
 
   imglib.Image _convertCameraImage(CameraImage image) {

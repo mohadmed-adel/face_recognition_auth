@@ -117,12 +117,6 @@ class FaceAuthController extends ChangeNotifier {
     }
   }
 
-  /// Helpers for image size
-  Size _calculateImageSize(CameraImage? image) {
-    if (image == null) return Size.zero;
-    return Size(image.width.toDouble(), image.height.toDouble());
-  }
-
   Size get previewSize => Size(
         cameraService.cameraController!.value.previewSize!.height,
         cameraService.cameraController!.value.previewSize!.width,
