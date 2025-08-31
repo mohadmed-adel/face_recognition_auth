@@ -12,17 +12,25 @@ class FaceAuthController extends ChangeNotifier {
   User? _user;
   List<Face>? _faces;
   Size? _imageSize;
+  String? _errorMessage;
 
   FaceAuthState? get state => _state;
   User? get user => _user;
   List<Face>? get faces => _faces;
   Size? get imageSize => _imageSize;
+  String? get errorMessage => _errorMessage;
 
   CameraService get cameraService => _faceAuth.cameraService;
 
   /// Initialize camera and face recognition isolate
   Future<void> initialize() async {
-    await _faceAuth.initialize();
+    try {
+      await _faceAuth.initialize();
+    } catch (e) {
+      _errorMessage = 'Failed to initialize: ${e.toString()}';
+      notifyListeners();
+      rethrow;
+    }
   }
 
   /// Register a new user
@@ -30,6 +38,7 @@ class FaceAuthController extends ChangeNotifier {
     int samples = 4,
     void Function(User? user)? onDone,
     FaceAuthProgress? onProgress,
+    void Function(String error)? onError,
     required String userId,
   }) async {
     _resetUser();
@@ -47,8 +56,10 @@ class FaceAuthController extends ChangeNotifier {
       );
 
       _setState(FaceAuthState.success);
-    } catch (_) {
+    } catch (e) {
+      _errorMessage = e.toString();
       _setState(FaceAuthState.failed);
+      onError?.call(_errorMessage!);
     }
 
     onDone?.call(_user);
@@ -58,6 +69,7 @@ class FaceAuthController extends ChangeNotifier {
   Future<void> login({
     void Function(User? user)? onDone,
     FaceAuthProgress? onProgress,
+    void Function(String error)? onError,
   }) async {
     _resetUser();
     _setState(FaceAuthState.cameraOpened);
@@ -72,8 +84,10 @@ class FaceAuthController extends ChangeNotifier {
       );
 
       _setState(FaceAuthState.success);
-    } catch (_) {
+    } catch (e) {
+      _errorMessage = e.toString();
       _setState(FaceAuthState.failed);
+      onError?.call(_errorMessage!);
     }
 
     onDone?.call(_user);
@@ -96,6 +110,13 @@ class FaceAuthController extends ChangeNotifier {
   void _resetUser() {
     _user = null;
     _faces = null;
+    _errorMessage = null;
+  }
+
+  /// Clear error message
+  void clearError() {
+    _errorMessage = null;
+    notifyListeners();
   }
 
   /// Clean up resources
