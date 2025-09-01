@@ -1,3 +1,14 @@
+## 1.0.3
+
+- Fixed disposal safety issues: Prevent controller usage after disposal
+- Added disposal checks to all public methods to prevent runtime errors
+- Implemented proper cleanup in dispose() method to prevent async operation conflicts
+- Added isDisposed getter for external disposal state checking
+- Enhanced error handling for disposed controller operations
+- Fixed previewSize getter to handle disposed state gracefully
+- Improved resource management and memory safety
+- Added comprehensive disposal state validation across all operations
+
 ## 1.0.2
 
 - Added Database-Only Operations: Lightweight database operations without camera initialization
@@ -19,7 +30,7 @@
 - Updated Database Schema: Changed from INTEGER to TEXT for user IDs
 - Added User Existence Checking: Methods to check, get, and delete users
 - Enhanced API: Added comprehensive database helper methods
-- Improved Documentation: Updated README with complete API documentation
+- Improved Documentation: Updated README with complete API documentationgit
 - Added Tests: Comprehensive testing for new database functionality
 - Fixed userId parameter handling in registration flow
 - Enhanced error handling and validation
