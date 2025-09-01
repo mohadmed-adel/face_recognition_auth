@@ -1,12 +1,10 @@
 import 'dart:async';
 import 'dart:developer';
 
-import 'package:camera/camera.dart';
 import 'package:face_recognition_auth/face_recognition_auth.dart';
 import 'package:face_recognition_auth/src/isolate/frame_request.dart';
 import 'package:face_recognition_auth/src/isolate/isolate_helper.dart';
 import 'package:flutter/services.dart';
-import 'package:image/image.dart' as imglib;
 
 class FaceAuthIsolate {
   FaceAuthIsolate();
@@ -261,11 +259,5 @@ class FaceAuthIsolate {
   Future<List<User>> getAllUsers() async {
     if (!_dbInitialized) await initializeDatabaseOnly();
     return await _database.queryAllUsers();
-  }
-
-  imglib.Image _convertCameraImage(CameraImage image) {
-    var img = convertToImage(image);
-    var img1 = imglib.copyRotate(img, angle: -90);
-    return img1;
   }
 }
