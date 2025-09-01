@@ -7,6 +7,7 @@ import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 
 class FaceAuthController extends ChangeNotifier {
   final FaceAuthIsolate _faceAuth = FaceAuthIsolate();
+  bool _dbOnlyInitialized = false;
 
   FaceAuthState? _state;
   User? _user;
@@ -30,6 +31,20 @@ class FaceAuthController extends ChangeNotifier {
       _errorMessage = 'Failed to initialize: ${e.toString()}';
       notifyListeners();
       rethrow;
+    }
+  }
+
+  /// Initialize only database without camera services
+  Future<void> initializeDatabaseOnly() async {
+    if (!_dbOnlyInitialized) {
+      try {
+        await _faceAuth.initializeDatabaseOnly();
+        _dbOnlyInitialized = true;
+      } catch (e) {
+        _errorMessage = 'Failed to initialize database: ${e.toString()}';
+        notifyListeners();
+        rethrow;
+      }
     }
   }
 
@@ -145,21 +160,31 @@ class FaceAuthController extends ChangeNotifier {
 
   /// Check if a user exists by ID
   Future<bool> userExists(String userId) async {
+    await initializeDatabaseOnly();
     return await _faceAuth.userExists(userId);
   }
 
   /// Get user by ID
   Future<User?> getUserById(String userId) async {
+    await initializeDatabaseOnly();
     return await _faceAuth.getUserById(userId);
   }
 
   /// Delete user by ID
   Future<int> deleteUser(String userId) async {
+    await initializeDatabaseOnly();
     return await _faceAuth.deleteUser(userId);
   }
 
   /// Get all registered users
   Future<List<User>> getAllUsers() async {
+    await initializeDatabaseOnly();
     return await _faceAuth.getAllUsers();
+  }
+
+  /// Delete all users from database
+  Future<void> deleteAllUsers() async {
+    await initializeDatabaseOnly();
+    return await _faceAuth.deleteDatabase();
   }
 }

@@ -27,6 +27,7 @@ class FaceAuth {
   late DatabaseHelper _database;
   late FaceDetectorService _faceDetectorService;
   bool _initialized = false;
+  bool _dbInitialized = false;
   late MLService _mlService;
   bool _processing = false;
   bool _detectFaceProcessing = false;
@@ -45,7 +46,15 @@ class FaceAuth {
     await _cameraService.initialize();
     _faceDetectorService.initialize();
     _initialized = true;
-    _initialized = true;
+  }
+
+  /// Initialize only database without camera services
+  Future<void> initializeDatabaseOnly() async {
+    _database = DatabaseHelper.instance;
+    // Don't initialize camera, face detector, or ML model
+    // Just ensure database is ready
+    await _database.database;
+    _dbInitialized = true;
   }
 
   /// Register user via camera
@@ -225,30 +234,31 @@ class FaceAuth {
   }
 
   Future deleteDatabase() async {
+    if (!_dbInitialized) await initializeDatabaseOnly();
     await _database.deleteAll();
   }
 
   /// Check if a user exists by ID
   Future<bool> userExists(String userId) async {
-    if (!_initialized) await initialize();
+    if (!_dbInitialized) await initializeDatabaseOnly();
     return await _database.userExists(userId);
   }
 
   /// Get user by ID
   Future<User?> getUserById(String userId) async {
-    if (!_initialized) await initialize();
+    if (!_dbInitialized) await initializeDatabaseOnly();
     return await _database.getUserById(userId);
   }
 
   /// Delete user by ID
   Future<int> deleteUser(String userId) async {
-    if (!_initialized) await initialize();
+    if (!_dbInitialized) await initializeDatabaseOnly();
     return await _database.deleteUser(userId);
   }
 
   /// Get all registered users
   Future<List<User>> getAllUsers() async {
-    if (!_initialized) await initialize();
+    if (!_dbInitialized) await initializeDatabaseOnly();
     return await _database.queryAllUsers();
   }
 }

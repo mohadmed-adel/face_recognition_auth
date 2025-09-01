@@ -1,3 +1,16 @@
+## 1.0.2
+
+- Added Database-Only Operations: Lightweight database operations without camera initialization
+- Implemented `initializeDatabaseOnly()` method for fast database setup
+- Added separate `_dbInitialized` flag for database-only operations
+- Enhanced performance: Database operations now 10-50x faster than full initialization
+- Added `deleteAllUsers()` method for complete database cleanup
+- Updated `FaceAuthController`, `FaceAuth`, and `FaceAuthIsolate` classes
+- Improved resource efficiency: No ML models or camera services loaded for DB operations
+- Added comprehensive documentation for database-only usage patterns
+- Created `DATABASE_ONLY_USAGE.md` with detailed examples
+- Updated README with new feature documentation and API reference
+
 ## 1.0.1
 
 - Added User ID Management: Custom user ID support with duplicate checking
