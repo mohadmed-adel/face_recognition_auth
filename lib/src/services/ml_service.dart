@@ -66,51 +66,50 @@ class MLService {
   }
 
   Future<void> initializeFromBytes(Uint8List modelBytes) async {
-  try {
-    if (Platform.isAndroid) {
+    try {
+      if (Platform.isAndroid) {
+        final cpuOptions = InterpreterOptions()
+          ..threads = 2
+          ..useNnApiForAndroid = false;
+
+        _interpreter = Interpreter.fromBuffer(
+          modelBytes,
+          options: cpuOptions,
+        );
+        dev.log('TFLite loaded with CPU (XNNPACK) on Android');
+        return;
+      }
+
+      if (Platform.isIOS) {
+        try {
+          final gpu = GpuDelegate();
+          final options = InterpreterOptions()..addDelegate(gpu);
+
+          _interpreter = Interpreter.fromBuffer(
+            modelBytes,
+            options: options,
+          );
+          dev.log('TFLite loaded with Metal GPU delegate');
+          return;
+        } catch (e) {
+          dev.log('iOS GPU delegate failed, falling back to CPU. $e');
+        }
+      }
+
+      // fallback CPU
       final cpuOptions = InterpreterOptions()
-        ..threads = 2
+        ..threads = 1
         ..useNnApiForAndroid = false;
 
       _interpreter = Interpreter.fromBuffer(
         modelBytes,
         options: cpuOptions,
       );
-      dev.log('TFLite loaded with CPU (XNNPACK) on Android');
-      return;
+      dev.log('TFLite loaded with CPU (fallback)');
+    } catch (e) {
+      dev.log('Failed to load model. $e');
     }
-
-    if (Platform.isIOS) {
-      try {
-        final gpu = GpuDelegate();
-        final options = InterpreterOptions()..addDelegate(gpu);
-
-        _interpreter = Interpreter.fromBuffer(
-          modelBytes,
-          options: options,
-        );
-        dev.log('TFLite loaded with Metal GPU delegate');
-        return;
-      } catch (e) {
-        dev.log('iOS GPU delegate failed, falling back to CPU. $e');
-      }
-    }
-
-    // fallback CPU
-    final cpuOptions = InterpreterOptions()
-      ..threads = 1
-      ..useNnApiForAndroid = false;
-
-    _interpreter = Interpreter.fromBuffer(
-      modelBytes,
-      options: cpuOptions,
-    );
-    dev.log('TFLite loaded with CPU (fallback)');
-  } catch (e) {
-    dev.log('Failed to load model. $e');
   }
-}
-
 
   void setCurrentPrediction(CameraImage cameraImage, Face? face) {
     if (_interpreter == null) throw Exception('Interpreter is null');
@@ -156,6 +155,7 @@ class MLService {
     Float32List imageAsList = imageToByteListFloat32(img);
     return imageAsList;
   }
+
   List _preProcess2(imglib.Image croppedImage, Face faceDetected) {
     imglib.Image img = imglib.copyResizeCropSquare(croppedImage, size: 112);
 
@@ -223,10 +223,8 @@ class MLService {
   // Otherwise, return the single embedding as-is.
   List<double> _representativeEmbedding(List data) {
     if (data.isNotEmpty && data.first is List) {
-      final List<List<num>> samples = data
-          .cast<List>()
-          .map((e) => e.cast<num>())
-          .toList();
+      final List<List<num>> samples =
+          data.cast<List>().map((e) => e.cast<num>()).toList();
       return _centroid(samples);
     }
     return data.map((e) => (e as num).toDouble()).toList();
@@ -275,5 +273,5 @@ class MLService {
     _predictedData = value;
   }
 
-  dispose() {}
+  void dispose() {}
 }

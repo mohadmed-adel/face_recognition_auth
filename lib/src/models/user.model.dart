@@ -13,7 +13,7 @@ class User {
     );
   }
 
-  toMap() {
+  Map<String, String> toMap() {
     return {
       "id": id,
       'model_data': jsonEncode(modelData),
