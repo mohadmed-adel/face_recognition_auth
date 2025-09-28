@@ -3,6 +3,8 @@ import 'dart:developer';
 
 import 'package:camera/camera.dart';
 import 'package:face_recognition_auth/face_recognition_auth.dart';
+import 'package:face_recognition_auth/src/models/anti_spoofing_config.dart';
+import 'package:face_recognition_auth/src/services/anti_spoofing_service.dart';
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 
 typedef FaceAuthProgress = void Function(FaceAuthState state);
@@ -13,10 +15,12 @@ enum FaceAuthState {
   cameraOpened,
   detectingFace,
   collectingSamples,
+  antiSpoofingCheck,
   matching,
   success,
   failed,
   timeout,
+  spoofingDetected,
 }
 
 /// High-level facade for common face auth operations.
@@ -26,15 +30,27 @@ class FaceAuth {
   late CameraService _cameraService;
   late DatabaseHelper _database;
   late FaceDetectorService _faceDetectorService;
+  late AntiSpoofingService _antiSpoofingService;
   bool _initialized = false;
   bool _dbInitialized = false;
   late MLService _mlService;
   bool _processing = false;
   bool _detectFaceProcessing = false;
+  AntiSpoofingConfig _antiSpoofingConfig = AntiSpoofingConfig.balanced();
 
   CameraService get cameraService => _cameraService;
 
   FaceDetectorService get faceDetectorService => _faceDetectorService;
+
+  AntiSpoofingService get antiSpoofingService => _antiSpoofingService;
+
+  /// Configure anti-spoofing settings
+  void configureAntiSpoofing(AntiSpoofingConfig config) {
+    _antiSpoofingConfig = config;
+  }
+
+  /// Get current anti-spoofing configuration
+  AntiSpoofingConfig get antiSpoofingConfig => _antiSpoofingConfig;
 
   /// Initialize services
   Future<void> initialize() async {
@@ -42,6 +58,7 @@ class FaceAuth {
     _database = DatabaseHelper.instance;
     _cameraService = CameraService();
     _faceDetectorService = FaceDetectorService(_cameraService);
+    _antiSpoofingService = AntiSpoofingService();
     await _mlService.initialize();
     await _cameraService.initialize();
     _faceDetectorService.initialize();
@@ -64,10 +81,17 @@ class FaceAuth {
     FaceAuthProgress? onProgress,
     FaceDetectionCallback? onFaceDetected,
     required String userId,
+    AntiSpoofingConfig? antiSpoofingConfig,
   }) async {
     if (!_initialized) await initialize();
     if (_processing) throw StateError('Another operation in progress');
     _processing = true;
+
+    // Use provided config or default
+    final config = antiSpoofingConfig ?? _antiSpoofingConfig;
+
+    // Reset anti-spoofing service
+    _antiSpoofingService.reset();
 
     final List<List<num>> samples = [];
     final completer = Completer<User>();
@@ -111,6 +135,35 @@ class FaceAuth {
 
         final face = _faceDetectorService.faces.first;
         onFaceDetected?.call(_faceDetectorService.faces, image);
+
+        // Perform anti-spoofing check if enabled
+        if (config.enabled) {
+          onProgress?.call(FaceAuthState.antiSpoofingCheck);
+          final antiSpoofingResult = await _antiSpoofingService.analyzeFrame(
+            image,
+            face,
+            requireActiveLiveness: config.requireActiveLiveness,
+          );
+
+          if (config.enableDebugLogging) {
+            log('Anti-spoofing result: $antiSpoofingResult');
+          }
+
+          // Check if spoofing is detected
+          if (!antiSpoofingResult.isLive &&
+              antiSpoofingResult.confidence < config.minConfidenceThreshold) {
+            finishError(StateError(
+                'Spoofing detected. ${antiSpoofingResult.recommendations.join(' ')}'));
+            _detectFaceProcessing = false;
+            return;
+          }
+
+          // If we don't have enough data yet, continue collecting
+          if (!antiSpoofingResult.hasEnoughData) {
+            _detectFaceProcessing = false;
+            return;
+          }
+        }
 
         _mlService.setCurrentPrediction(image, face);
         final emb = List.from(_mlService.predictedData);
@@ -156,10 +209,17 @@ class FaceAuth {
     Duration timeout = const Duration(seconds: 15),
     FaceAuthProgress? onProgress,
     FaceDetectionCallback? onFaceDetected,
+    AntiSpoofingConfig? antiSpoofingConfig,
   }) async {
     if (!_initialized) await initialize();
     if (_processing) throw StateError('Another operation in progress');
     _processing = true;
+
+    // Use provided config or default
+    final config = antiSpoofingConfig ?? _antiSpoofingConfig;
+
+    // Reset anti-spoofing service
+    _antiSpoofingService.reset();
 
     final List<List<num>> samples = [];
     final completer = Completer<User?>();
@@ -196,6 +256,34 @@ class FaceAuth {
         final face = _faceDetectorService.faces.first;
         onFaceDetected?.call(_faceDetectorService.faces, image);
 
+        // Perform anti-spoofing check if enabled
+        if (config.enabled) {
+          onProgress?.call(FaceAuthState.antiSpoofingCheck);
+          final antiSpoofingResult = await _antiSpoofingService.analyzeFrame(
+            image,
+            face,
+            requireActiveLiveness: config.requireActiveLiveness,
+          );
+
+          if (config.enableDebugLogging) {
+            log('Anti-spoofing result: $antiSpoofingResult');
+          }
+
+          // Check if spoofing is detected
+          if (!antiSpoofingResult.isLive &&
+              antiSpoofingResult.confidence < config.minConfidenceThreshold) {
+            finish(null, FaceAuthState.spoofingDetected);
+            _detectFaceProcessing = false;
+            return;
+          }
+
+          // If we don't have enough data yet, continue collecting
+          if (!antiSpoofingResult.hasEnoughData) {
+            _detectFaceProcessing = false;
+            return;
+          }
+        }
+
         _mlService.setCurrentPrediction(image, face);
         final emb = List.from(_mlService.predictedData);
         if (emb.isEmpty) {
@@ -230,6 +318,7 @@ class FaceAuth {
   Future<void> dispose() async {
     await _cameraService.stopImageStreamIfActive();
     _faceDetectorService.dispose();
+    _antiSpoofingService.dispose();
     await _cameraService.dispose();
   }
 

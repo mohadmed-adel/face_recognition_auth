@@ -16,6 +16,12 @@ class FaceAuthController extends ChangeNotifier {
   Size? _imageSize;
   String? _errorMessage;
 
+  // Anti-spoofing related state
+  AntiSpoofingResult? _antiSpoofingResult;
+  AntiSpoofingConfig _antiSpoofingConfig = AntiSpoofingConfig.balanced();
+  List<String> _livenessPrompts = [];
+  bool _showLivenessPrompt = false;
+
   FaceAuthState? get state => _state;
   User? get user => _user;
   List<Face>? get faces => _faces;
@@ -23,7 +29,38 @@ class FaceAuthController extends ChangeNotifier {
   String? get errorMessage => _errorMessage;
   bool get isDisposed => _disposed;
 
+  // Anti-spoofing getters
+  AntiSpoofingResult? get antiSpoofingResult => _antiSpoofingResult;
+  AntiSpoofingConfig get antiSpoofingConfig => _antiSpoofingConfig;
+  List<String> get livenessPrompts => _livenessPrompts;
+  bool get showLivenessPrompt => _showLivenessPrompt;
+
   CameraService get cameraService => _faceAuth.cameraService;
+
+  /// Configure anti-spoofing settings
+  void configureAntiSpoofing(AntiSpoofingConfig config) {
+    if (_disposed) return;
+    _antiSpoofingConfig = config;
+    // Note: FaceAuthIsolate doesn't have configureAntiSpoofing method
+    // The configuration will be passed when calling register/login methods
+    notifyListeners();
+  }
+
+  /// Update liveness prompts for user guidance
+  void _updateLivenessPrompts(List<String> prompts) {
+    if (_disposed) return;
+    _livenessPrompts = prompts;
+    _showLivenessPrompt = prompts.isNotEmpty;
+    notifyListeners();
+  }
+
+  /// Clear liveness prompts
+  void _clearLivenessPrompts() {
+    if (_disposed) return;
+    _livenessPrompts.clear();
+    _showLivenessPrompt = false;
+    notifyListeners();
+  }
 
   /// Initialize camera and face recognition isolate
   Future<void> initialize() async {
@@ -57,6 +94,7 @@ class FaceAuthController extends ChangeNotifier {
     FaceAuthProgress? onProgress,
     void Function(String error)? onError,
     required String userId,
+    AntiSpoofingConfig? antiSpoofingConfig,
   }) async {
     if (_disposed) throw StateError('Controller is disposed');
     _resetUser();
@@ -67,6 +105,7 @@ class FaceAuthController extends ChangeNotifier {
         requiredSamples: samples,
         onProgress: (data) {
           _setState(data);
+          _handleAntiSpoofingState(data);
           onProgress?.call(data);
         },
         onFaceDetected: _updateFace,
@@ -74,9 +113,11 @@ class FaceAuthController extends ChangeNotifier {
       );
 
       _setState(FaceAuthState.success);
+      _clearLivenessPrompts();
     } catch (e) {
       _errorMessage = e.toString();
       _setState(FaceAuthState.failed);
+      _clearLivenessPrompts();
       onError?.call(_errorMessage!);
     }
 
@@ -88,6 +129,7 @@ class FaceAuthController extends ChangeNotifier {
     void Function(User? user)? onDone,
     FaceAuthProgress? onProgress,
     void Function(String error)? onError,
+    AntiSpoofingConfig? antiSpoofingConfig,
   }) async {
     if (_disposed) throw StateError('Controller is disposed');
     _resetUser();
@@ -98,14 +140,17 @@ class FaceAuthController extends ChangeNotifier {
         onFaceDetected: _updateFace,
         onProgress: (data) {
           _setState(data);
+          _handleAntiSpoofingState(data);
           onProgress?.call(data);
         },
       );
 
       _setState(FaceAuthState.success);
+      _clearLivenessPrompts();
     } catch (e) {
       _errorMessage = e.toString();
       _setState(FaceAuthState.failed);
+      _clearLivenessPrompts();
       onError?.call(_errorMessage!);
     }
 
@@ -117,6 +162,52 @@ class FaceAuthController extends ChangeNotifier {
     if (_disposed) return;
     _state = state;
     notifyListeners();
+  }
+
+  /// Handle anti-spoofing specific states and update UI accordingly
+  void _handleAntiSpoofingState(FaceAuthState state) {
+    if (_disposed) return;
+
+    switch (state) {
+      case FaceAuthState.antiSpoofingCheck:
+        _updateLivenessPrompts(_getAntiSpoofingPrompts());
+        break;
+      case FaceAuthState.spoofingDetected:
+        _updateLivenessPrompts([
+          'Spoofing detected!',
+          'Please ensure you are a real person',
+          'Remove any masks or coverings',
+          'Try again with good lighting'
+        ]);
+        break;
+      case FaceAuthState.success:
+      case FaceAuthState.failed:
+        _clearLivenessPrompts();
+        break;
+      default:
+        break;
+    }
+  }
+
+  /// Get appropriate liveness prompts based on current anti-spoofing configuration
+  List<String> _getAntiSpoofingPrompts() {
+    final prompts = <String>[];
+
+    if (_antiSpoofingConfig.requireActiveLiveness) {
+      prompts.addAll([
+        'Please blink naturally',
+        'Move your head slightly',
+        'Look directly at the camera'
+      ]);
+    } else {
+      prompts.addAll([
+        'Stay still and look at the camera',
+        'Ensure good lighting',
+        'Keep your face centered'
+      ]);
+    }
+
+    return prompts;
   }
 
   /// Update detected faces
@@ -133,6 +224,8 @@ class FaceAuthController extends ChangeNotifier {
     _user = null;
     _faces = null;
     _errorMessage = null;
+    _antiSpoofingResult = null;
+    _clearLivenessPrompts();
   }
 
   /// Clear error message

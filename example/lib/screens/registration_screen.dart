@@ -95,6 +95,8 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
         return 'Camera ready - Position your face in the frame';
       case FaceAuthState.detectingFace:
         return 'Looking for face...';
+      case FaceAuthState.antiSpoofingCheck:
+        return 'Verifying liveness...';
       case FaceAuthState.collectingSamples:
         return 'Collecting face samples...';
       case FaceAuthState.matching:
@@ -105,6 +107,8 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
         return 'Registration failed';
       case FaceAuthState.timeout:
         return 'Registration timed out';
+      case FaceAuthState.spoofingDetected:
+        return 'Spoofing detected - Please use a real face';
     }
   }
 
@@ -153,195 +157,194 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(
-          title: const Text('Register New User'),
-          backgroundColor: Colors.green.shade600,
-          foregroundColor: Colors.white,
-        ),
-        body: Column(
-          children: [
-            // User ID Input Section
-            Container(
-              padding: const EdgeInsets.all(16),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Text(
-                      'Enter User Information',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
-                    ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _userIdController,
-                      decoration: const InputDecoration(
-                        labelText: 'User ID',
-                        hintText: 'Enter a unique user identifier',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.person),
-                      ),
-                      validator: (value) {
-                        if (value == null || value.trim().isEmpty) {
-                          return 'Please enter a user ID';
-                        }
-                        if (value.trim().length < 3) {
-                          return 'User ID must be at least 3 characters';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    ElevatedButton.icon(
-                      onPressed: _isInitialized && !_isRegistering
-                          ? _startRegistration
-                          : null,
-                      icon: _isRegistering
-                          ? const SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Icon(Icons.camera_alt),
-                      label: Text(
-                        _isRegistering
-                            ? 'Registering...'
-                            : 'Start Registration',
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                      ),
-                    ),
-                  ],
+    appBar: AppBar(
+      title: const Text('Register New User'),
+      backgroundColor: Colors.green.shade600,
+      foregroundColor: Colors.white,
+    ),
+    body: Column(
+      children: [
+        // User ID Input Section
+        Container(
+          padding: const EdgeInsets.all(16),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  'Enter User Information',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
                 ),
-              ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _userIdController,
+                  decoration: const InputDecoration(
+                    labelText: 'User ID',
+                    hintText: 'Enter a unique user identifier',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.person),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Please enter a user ID';
+                    }
+                    if (value.trim().length < 3) {
+                      return 'User ID must be at least 3 characters';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton.icon(
+                  onPressed: _isInitialized && !_isRegistering
+                      ? _startRegistration
+                      : null,
+                  icon: _isRegistering
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.camera_alt),
+                  label: Text(
+                    _isRegistering ? 'Registering...' : 'Start Registration',
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                  ),
+                ),
+              ],
             ),
+          ),
+        ),
 
-            const Divider(),
+        const Divider(),
 
-            // Camera Preview Section
-            Expanded(
-              child: Container(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Text(
-                      'Camera Preview',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
+        // Camera Preview Section
+        Expanded(
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  'Camera Preview',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // Status Message
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: _getStatusColor().withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: _getStatusColor().withOpacity(0.3),
                     ),
-                    const SizedBox(height: 16),
-
-                    // Status Message
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: _getStatusColor().withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                            color: _getStatusColor().withOpacity(0.3)),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        _getStatusIcon(),
+                        color: _getStatusColor(),
+                        size: 20,
                       ),
-                      child: Row(
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          _statusMessage,
+                          style: TextStyle(
+                            color: _getStatusColor(),
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 16),
+
+                // Camera Preview
+                Expanded(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.grey.shade300),
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: _isInitialized
+                          ? FaceAuthView(controller: _controller)
+                          : const Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  CircularProgressIndicator(),
+                                  SizedBox(height: 16),
+                                  Text('Initializing camera...'),
+                                ],
+                              ),
+                            ),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 16),
+
+                // Instructions
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
                         children: [
                           Icon(
-                            _getStatusIcon(),
-                            color: _getStatusColor(),
+                            Icons.info,
+                            color: Colors.blue.shade600,
                             size: 20,
                           ),
                           const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              _statusMessage,
-                              style: TextStyle(
-                                color: _getStatusColor(),
-                                fontWeight: FontWeight.w500,
-                              ),
+                          Text(
+                            'Registration Instructions',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.blue.shade800,
                             ),
                           ),
                         ],
                       ),
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    // Camera Preview
-                    Expanded(
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.grey.shade300),
-                        ),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child: _isInitialized
-                              ? FaceAuthView(controller: _controller)
-                              : const Center(
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      CircularProgressIndicator(),
-                                      SizedBox(height: 16),
-                                      Text('Initializing camera...'),
-                                    ],
-                                  ),
-                                ),
-                        ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        '• Position your face in the center of the frame\n'
+                        '• Ensure good lighting\n'
+                        '• Keep your face still during registration\n'
+                        '• The system will collect 4 face samples',
+                        style: TextStyle(fontSize: 12),
                       ),
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    // Instructions
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.blue.shade50,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.info,
-                                color: Colors.blue.shade600,
-                                size: 20,
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                'Registration Instructions',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.blue.shade800,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          const Text(
-                            '• Position your face in the center of the frame\n'
-                            '• Ensure good lighting\n'
-                            '• Keep your face still during registration\n'
-                            '• The system will collect 4 face samples',
-                            style: TextStyle(fontSize: 12),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
+              ],
             ),
-          ],
+          ),
         ),
-      );
+      ],
+    ),
+  );
 
   Color _getStatusColor() {
     switch (_currentState) {
@@ -349,6 +352,8 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
         return Colors.blue;
       case FaceAuthState.detectingFace:
         return Colors.orange;
+      case FaceAuthState.antiSpoofingCheck:
+        return Colors.teal;
       case FaceAuthState.collectingSamples:
         return Colors.purple;
       case FaceAuthState.matching:
@@ -358,6 +363,8 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
       case FaceAuthState.failed:
         return Colors.red;
       case FaceAuthState.timeout:
+        return Colors.red;
+      case FaceAuthState.spoofingDetected:
         return Colors.red;
       default:
         return Colors.grey;
@@ -370,6 +377,8 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
         return Icons.camera_alt;
       case FaceAuthState.detectingFace:
         return Icons.face;
+      case FaceAuthState.antiSpoofingCheck:
+        return Icons.verified_user;
       case FaceAuthState.collectingSamples:
         return Icons.collections;
       case FaceAuthState.matching:
@@ -380,6 +389,8 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
         return Icons.error;
       case FaceAuthState.timeout:
         return Icons.timer_off;
+      case FaceAuthState.spoofingDetected:
+        return Icons.warning;
       default:
         return Icons.info;
     }

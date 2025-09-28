@@ -78,6 +78,8 @@ class _LoginScreenState extends State<LoginScreen> {
         return 'Camera ready - Position your face in the frame';
       case FaceAuthState.detectingFace:
         return 'Looking for face...';
+      case FaceAuthState.antiSpoofingCheck:
+        return 'Verifying liveness...';
       case FaceAuthState.collectingSamples:
         return 'Collecting face samples...';
       case FaceAuthState.matching:
@@ -88,6 +90,8 @@ class _LoginScreenState extends State<LoginScreen> {
         return 'Authentication failed';
       case FaceAuthState.timeout:
         return 'Authentication timed out';
+      case FaceAuthState.spoofingDetected:
+        return 'Spoofing detected - Please use a real face';
     }
   }
 
@@ -188,189 +192,187 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(
-          title: const Text('Face Authentication'),
-          backgroundColor: Colors.blue.shade600,
-          foregroundColor: Colors.white,
-        ),
-        body: Column(
-          children: [
-            // Header Section
-            Container(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                children: [
-                  Icon(
-                    Icons.face_retouching_natural,
-                    size: 64,
-                    color: Colors.blue.shade600,
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Face Authentication',
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.blue.shade800,
-                        ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Position your face in front of the camera to authenticate',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Colors.grey.shade600,
-                        ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 24),
-                  ElevatedButton.icon(
-                    onPressed:
-                        _isInitialized && !_isLoggingIn ? _startLogin : null,
-                    icon: _isLoggingIn
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.login),
-                    label: Text(
-                      _isLoggingIn
-                          ? 'Authenticating...'
-                          : 'Start Authentication',
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(
-                        vertical: 16,
-                        horizontal: 32,
-                      ),
-                    ),
-                  ),
-                ],
+    appBar: AppBar(
+      title: const Text('Face Authentication'),
+      backgroundColor: Colors.blue.shade600,
+      foregroundColor: Colors.white,
+    ),
+    body: Column(
+      children: [
+        // Header Section
+        Container(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              Icon(
+                Icons.face_retouching_natural,
+                size: 64,
+                color: Colors.blue.shade600,
               ),
-            ),
+              const SizedBox(height: 16),
+              Text(
+                'Face Authentication',
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.blue.shade800,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Position your face in front of the camera to authenticate',
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyMedium?.copyWith(color: Colors.grey.shade600),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton.icon(
+                onPressed: _isInitialized && !_isLoggingIn ? _startLogin : null,
+                icon: _isLoggingIn
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.login),
+                label: Text(
+                  _isLoggingIn ? 'Authenticating...' : 'Start Authentication',
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 16,
+                    horizontal: 32,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
 
-            const Divider(),
+        const Divider(),
 
-            // Camera Preview Section
-            Expanded(
-              child: Container(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Text(
-                      'Camera Preview',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
+        // Camera Preview Section
+        Expanded(
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  'Camera Preview',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // Status Message
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: _getStatusColor().withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: _getStatusColor().withOpacity(0.3),
                     ),
-                    const SizedBox(height: 16),
-
-                    // Status Message
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: _getStatusColor().withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                            color: _getStatusColor().withOpacity(0.3)),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        _getStatusIcon(),
+                        color: _getStatusColor(),
+                        size: 20,
                       ),
-                      child: Row(
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          _statusMessage,
+                          style: TextStyle(
+                            color: _getStatusColor(),
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 16),
+
+                // Camera Preview
+                Expanded(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.grey.shade300),
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: _isInitialized
+                          ? FaceAuthView(controller: _controller)
+                          : const Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  CircularProgressIndicator(),
+                                  SizedBox(height: 16),
+                                  Text('Initializing camera...'),
+                                ],
+                              ),
+                            ),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 16),
+
+                // Instructions
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
                         children: [
                           Icon(
-                            _getStatusIcon(),
-                            color: _getStatusColor(),
+                            Icons.info,
+                            color: Colors.blue.shade600,
                             size: 20,
                           ),
                           const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              _statusMessage,
-                              style: TextStyle(
-                                color: _getStatusColor(),
-                                fontWeight: FontWeight.w500,
-                              ),
+                          Text(
+                            'Authentication Tips',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.blue.shade800,
                             ),
                           ),
                         ],
                       ),
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    // Camera Preview
-                    Expanded(
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.grey.shade300),
-                        ),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child: _isInitialized
-                              ? FaceAuthView(controller: _controller)
-                              : const Center(
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      CircularProgressIndicator(),
-                                      SizedBox(height: 16),
-                                      Text('Initializing camera...'),
-                                    ],
-                                  ),
-                                ),
-                        ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        '• Position your face in the center of the frame\n'
+                        '• Ensure good lighting conditions\n'
+                        '• Keep your face still during authentication\n'
+                        '• Make sure you are already registered',
+                        style: TextStyle(fontSize: 12),
                       ),
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    // Instructions
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.blue.shade50,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.info,
-                                color: Colors.blue.shade600,
-                                size: 20,
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                'Authentication Tips',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.blue.shade800,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          const Text(
-                            '• Position your face in the center of the frame\n'
-                            '• Ensure good lighting conditions\n'
-                            '• Keep your face still during authentication\n'
-                            '• Make sure you are already registered',
-                            style: TextStyle(fontSize: 12),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
+              ],
             ),
-          ],
+          ),
         ),
-      );
+      ],
+    ),
+  );
 
   Color _getStatusColor() {
     switch (_currentState) {
@@ -378,6 +380,8 @@ class _LoginScreenState extends State<LoginScreen> {
         return Colors.blue;
       case FaceAuthState.detectingFace:
         return Colors.orange;
+      case FaceAuthState.antiSpoofingCheck:
+        return Colors.teal;
       case FaceAuthState.collectingSamples:
         return Colors.purple;
       case FaceAuthState.matching:
@@ -387,6 +391,8 @@ class _LoginScreenState extends State<LoginScreen> {
       case FaceAuthState.failed:
         return Colors.red;
       case FaceAuthState.timeout:
+        return Colors.red;
+      case FaceAuthState.spoofingDetected:
         return Colors.red;
       default:
         return Colors.grey;
@@ -399,6 +405,8 @@ class _LoginScreenState extends State<LoginScreen> {
         return Icons.camera_alt;
       case FaceAuthState.detectingFace:
         return Icons.face;
+      case FaceAuthState.antiSpoofingCheck:
+        return Icons.verified_user;
       case FaceAuthState.collectingSamples:
         return Icons.collections;
       case FaceAuthState.matching:
@@ -409,6 +417,8 @@ class _LoginScreenState extends State<LoginScreen> {
         return Icons.error;
       case FaceAuthState.timeout:
         return Icons.timer_off;
+      case FaceAuthState.spoofingDetected:
+        return Icons.warning;
       default:
         return Icons.info;
     }

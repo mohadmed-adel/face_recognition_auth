@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/app_state_provider.dart';
+import 'anti_spoofing_demo_screen.dart';
 import 'database_operations_screen.dart';
+import 'enhanced_face_auth_demo_screen.dart';
 import 'login_screen.dart';
 import 'registration_screen.dart';
 import 'user_management_screen.dart';
@@ -126,10 +128,32 @@ class _HomeScreenState extends State<HomeScreen> {
 
                 _buildActionCard(
                   context,
+                  'Anti-Spoofing Demo',
+                  'Test and configure anti-spoofing features',
+                  Icons.security,
+                  Colors.purple,
+                  () => _navigateToAntiSpoofingDemo(),
+                ),
+
+                const SizedBox(height: 16),
+
+                _buildActionCard(
+                  context,
+                  'Enhanced Face Auth Demo',
+                  'Interactive face authentication with live anti-spoofing UI',
+                  Icons.face_retouching_natural,
+                  Colors.cyan,
+                  () => _navigateToEnhancedDemo(),
+                ),
+
+                const SizedBox(height: 16),
+
+                _buildActionCard(
+                  context,
                   'Database Operations',
                   'Advanced database operations and testing',
                   Icons.storage,
-                  Colors.purple,
+                  Colors.indigo,
                   () => _navigateToDatabaseOperations(),
                 ),
 
@@ -265,6 +289,22 @@ class _HomeScreenState extends State<HomeScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => const UserManagementScreen()),
+    );
+  }
+
+  void _navigateToAntiSpoofingDemo() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const AntiSpoofingDemoScreen()),
+    );
+  }
+
+  void _navigateToEnhancedDemo() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const EnhancedFaceAuthDemoScreen(),
+      ),
     );
   }
 
