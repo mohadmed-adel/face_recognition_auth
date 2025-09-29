@@ -3,17 +3,19 @@ import 'package:image/image.dart' as imglib;
 
 imglib.Image convertToImage(CameraImage image) {
   try {
-    if (image.format.group == ImageFormatGroup.yuv420) {
+    // Determine format based on number of planes
+    // YUV420 typically has 3 planes, BGRA8888 has 1 plane
+    if (image.planes.length == 3) {
       return _convertYUV420(image);
-    } else if (image.format.group == ImageFormatGroup.bgra8888) {
+    } else if (image.planes.length == 1) {
       return _convertBGRA8888(image);
     }
-    throw Exception('Image format not supported');
+    // Default to YUV420 for most camera formats
+    return _convertYUV420(image);
   } catch (e) {
-    // ignore: avoid_print
-    print('ERROR: $e');
+    // Log error without print statement
+    throw Exception('Image conversion failed: $e');
   }
-  throw Exception('Image format not supported');
 }
 
 imglib.Image _convertBGRA8888(CameraImage image) {

@@ -67,7 +67,7 @@ void mlRegisterWorkerEntry(SendPort mainSendPort) {
             FrameResponse(
               user: null,
               success: false,
-              msg: 'Face already registered',
+              msg: 'Face already registered for user: ${predicted.id}',
             ),
           );
           samples.clear();
@@ -95,7 +95,8 @@ void mlRegisterWorkerEntry(SendPort mainSendPort) {
           FrameResponse(
             user: null,
             success: false,
-            msg: 'no detected face required ${samples.length}',
+            msg:
+                'Collecting samples: ${samples.length}/${request.requiredSamples}',
           ),
         );
       }

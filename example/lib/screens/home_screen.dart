@@ -5,6 +5,7 @@ import '../providers/app_state_provider.dart';
 import 'anti_spoofing_demo_screen.dart';
 import 'database_operations_screen.dart';
 import 'enhanced_face_auth_demo_screen.dart';
+import 'enhanced_registration_screen.dart';
 import 'login_screen.dart';
 import 'registration_screen.dart';
 import 'user_management_screen.dart';
@@ -20,21 +21,6 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    _loadUsers();
-  }
-
-  Future<void> _loadUsers() async {
-    final appState = Provider.of<AppStateProvider>(context, listen: false);
-    appState.setLoading(true);
-
-    try {
-      // This would typically load users from the database
-      // For demo purposes, we'll show empty state initially
-      appState.setLoading(false);
-    } catch (e) {
-      appState.setError('Failed to load users: $e');
-      appState.setLoading(false);
-    }
   }
 
   @override
@@ -95,10 +81,21 @@ class _HomeScreenState extends State<HomeScreen> {
                 // Main Actions
                 _buildActionCard(
                   context,
-                  'Register New User',
-                  'Register a new user with face recognition',
-                  Icons.person_add,
+                  'Enhanced Registration',
+                  'Register with auto ID, multi-angle capture & anti-spoofing',
+                  Icons.auto_awesome,
                   Colors.green,
+                  () => _navigateToEnhancedRegistration(),
+                ),
+
+                const SizedBox(height: 16),
+
+                _buildActionCard(
+                  context,
+                  'Standard Registration',
+                  'Basic registration with manual user ID',
+                  Icons.person_add,
+                  Colors.teal,
                   () => _navigateToRegistration(),
                 ),
 
@@ -268,6 +265,15 @@ class _HomeScreenState extends State<HomeScreen> {
           style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
         ),
       ],
+    );
+  }
+
+  void _navigateToEnhancedRegistration() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const EnhancedRegistrationScreen(),
+      ),
     );
   }
 

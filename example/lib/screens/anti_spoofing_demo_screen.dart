@@ -232,6 +232,13 @@ class _AntiSpoofingDemoScreenState extends State<AntiSpoofingDemoScreen> {
                 ),
                 const SizedBox(height: 8),
                 _buildConfigCard(
+                  'Screen Resistant',
+                  'Maximum protection against screen-based attacks',
+                  AntiSpoofingConfig.screenResistant(),
+                  Colors.deepOrange,
+                ),
+                const SizedBox(height: 8),
+                _buildConfigCard(
                   'Disabled',
                   'No anti-spoofing (for comparison)',
                   AntiSpoofingConfig.disabled(),

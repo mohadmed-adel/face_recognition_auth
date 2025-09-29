@@ -3,13 +3,12 @@ import 'dart:developer';
 
 import 'package:camera/camera.dart';
 import 'package:face_recognition_auth/face_recognition_auth.dart';
-import 'package:face_recognition_auth/src/models/anti_spoofing_config.dart';
-import 'package:face_recognition_auth/src/services/anti_spoofing_service.dart';
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 
 typedef FaceAuthProgress = void Function(FaceAuthState state);
 typedef FaceDetectionCallback = void Function(
     List<Face>? faces, CameraImage image);
+typedef FaceAuthErrorCallback = void Function(FaceAuthError error);
 
 enum FaceAuthState {
   cameraOpened,
@@ -30,19 +29,24 @@ class FaceAuth {
   late CameraService _cameraService;
   late DatabaseHelper _database;
   late FaceDetectorService _faceDetectorService;
-  late AntiSpoofingService _antiSpoofingService;
+  late ImprovedAntiSpoofingService _antiSpoofingService;
+  late MultiAngleCaptureService _multiAngleCaptureService;
   bool _initialized = false;
   bool _dbInitialized = false;
   late MLService _mlService;
   bool _processing = false;
   bool _detectFaceProcessing = false;
   AntiSpoofingConfig _antiSpoofingConfig = AntiSpoofingConfig.balanced();
+  bool _useMultiAngleCapture = true;
 
   CameraService get cameraService => _cameraService;
 
   FaceDetectorService get faceDetectorService => _faceDetectorService;
 
-  AntiSpoofingService get antiSpoofingService => _antiSpoofingService;
+  ImprovedAntiSpoofingService get antiSpoofingService => _antiSpoofingService;
+
+  MultiAngleCaptureService get multiAngleCaptureService =>
+      _multiAngleCaptureService;
 
   /// Configure anti-spoofing settings
   void configureAntiSpoofing(AntiSpoofingConfig config) {
@@ -52,13 +56,22 @@ class FaceAuth {
   /// Get current anti-spoofing configuration
   AntiSpoofingConfig get antiSpoofingConfig => _antiSpoofingConfig;
 
+  /// Configure multi-angle capture
+  void configureMultiAngleCapture(bool enabled) {
+    _useMultiAngleCapture = enabled;
+  }
+
+  /// Get multi-angle capture setting
+  bool get useMultiAngleCapture => _useMultiAngleCapture;
+
   /// Initialize services
   Future<void> initialize() async {
     _mlService = MLService();
     _database = DatabaseHelper.instance;
     _cameraService = CameraService();
     _faceDetectorService = FaceDetectorService(_cameraService);
-    _antiSpoofingService = AntiSpoofingService();
+    _antiSpoofingService = ImprovedAntiSpoofingService();
+    _multiAngleCaptureService = MultiAngleCaptureService();
     await _mlService.initialize();
     await _cameraService.initialize();
     _faceDetectorService.initialize();
@@ -74,14 +87,17 @@ class FaceAuth {
     _dbInitialized = true;
   }
 
-  /// Register user via camera
+  /// Register user via camera with enhanced multi-angle capture
   Future<User> registerWithCamera({
     int requiredSamples = 4,
-    Duration timeout = const Duration(seconds: 20),
+    Duration timeout =
+        const Duration(seconds: 30), // Increased timeout for multi-angle
     FaceAuthProgress? onProgress,
     FaceDetectionCallback? onFaceDetected,
+    FaceAuthErrorCallback? onError,
     required String userId,
     AntiSpoofingConfig? antiSpoofingConfig,
+    bool useMultiAngleCapture = true,
   }) async {
     if (!_initialized) await initialize();
     if (_processing) throw StateError('Another operation in progress');
@@ -89,9 +105,13 @@ class FaceAuth {
 
     // Use provided config or default
     final config = antiSpoofingConfig ?? _antiSpoofingConfig;
+    final useMultiAngle = useMultiAngleCapture && _useMultiAngleCapture;
 
-    // Reset anti-spoofing service
+    // Reset services
     _antiSpoofingService.reset();
+    if (useMultiAngle) {
+      _multiAngleCaptureService.reset();
+    }
 
     final List<List<num>> samples = [];
     final completer = Completer<User>();
@@ -103,7 +123,16 @@ class FaceAuth {
       watchdog?.cancel();
       log("error $error");
       onProgress?.call(FaceAuthState.failed);
-      if (!completer.isCompleted) completer.completeError(error);
+
+      // Convert error to FaceAuthError if it's not already
+      final faceAuthError = error is FaceAuthError
+          ? error
+          : FaceAuthError.fromMessage(error.toString());
+
+      // Call onError callback if provided
+      onError?.call(faceAuthError);
+
+      if (!completer.isCompleted) completer.completeError(faceAuthError);
     }
 
     void finishOk(User user) async {
@@ -169,10 +198,36 @@ class FaceAuth {
         final emb = List.from(_mlService.predictedData);
         if (emb.isEmpty) return;
 
-        samples.add(emb.cast<num>());
+        // Handle multi-angle capture if enabled
+        if (useMultiAngle) {
+          try {
+            final angleSamples = await _multiAngleCaptureService.startCapture(
+              image: image,
+              face: face,
+              embedding: emb.cast<num>(),
+            );
+
+            // Convert angle samples to flat list
+            for (final angleSamplesList in angleSamples.values) {
+              samples.addAll(angleSamplesList);
+            }
+          } catch (e) {
+            log('Multi-angle capture error: $e');
+            // Fall back to regular capture
+            samples.add(emb.cast<num>());
+          }
+        } else {
+          samples.add(emb.cast<num>());
+        }
+
         onProgress?.call(FaceAuthState.collectingSamples);
 
-        if (samples.length >= requiredSamples) {
+        // Adjust required samples based on multi-angle capture
+        final adjustedRequiredSamples = useMultiAngle
+            ? 12
+            : requiredSamples; // 3 samples per angle * 4 angles
+
+        if (samples.length >= adjustedRequiredSamples) {
           // Check if user ID already exists
           final userExists = await _database.userExists(userId);
           if (userExists) {
@@ -209,6 +264,7 @@ class FaceAuth {
     Duration timeout = const Duration(seconds: 15),
     FaceAuthProgress? onProgress,
     FaceDetectionCallback? onFaceDetected,
+    FaceAuthErrorCallback? onError,
     AntiSpoofingConfig? antiSpoofingConfig,
   }) async {
     if (!_initialized) await initialize();
@@ -307,6 +363,13 @@ class FaceAuth {
       } catch (e) {
         log("login error $e");
 
+        // Convert error to FaceAuthError if it's not already
+        final faceAuthError =
+            e is FaceAuthError ? e : FaceAuthError.fromMessage(e.toString());
+
+        // Call onError callback if provided
+        onError?.call(faceAuthError);
+
         finish(null, FaceAuthState.failed);
       }
       _detectFaceProcessing = false;
@@ -319,6 +382,7 @@ class FaceAuth {
     await _cameraService.stopImageStreamIfActive();
     _faceDetectorService.dispose();
     _antiSpoofingService.dispose();
+    _multiAngleCaptureService.dispose();
     await _cameraService.dispose();
   }
 

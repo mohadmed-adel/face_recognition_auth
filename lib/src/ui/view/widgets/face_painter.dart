@@ -11,30 +11,42 @@ class FacePainter extends CustomPainter {
     if (face == null) return;
 
     Paint paint;
+    Paint shadowPaint;
 
     if (face!.headEulerAngleY! > 10 || face!.headEulerAngleY! < -10) {
       paint = Paint()
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 3.0
+        ..strokeWidth = 4.0
         ..color = Colors.red;
+      shadowPaint = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 6.0
+        ..color = Colors.red.withOpacity(0.3);
     } else {
       paint = Paint()
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 3.0
+        ..strokeWidth = 4.0
         ..color = Colors.green;
+      shadowPaint = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 6.0
+        ..color = Colors.green.withOpacity(0.3);
     }
 
     scaleX = size.width / imageSize.width;
     scaleY = size.height / imageSize.height;
 
-    canvas.drawRRect(
-        _scaleRect(
-            rect: face!.boundingBox,
-            imageSize: imageSize,
-            widgetSize: size,
-            scaleX: scaleX ?? 1,
-            scaleY: scaleY ?? 1),
-        paint);
+    final faceRect = _scaleRect(
+        rect: face!.boundingBox,
+        imageSize: imageSize,
+        widgetSize: size,
+        scaleX: scaleX ?? 1,
+        scaleY: scaleY ?? 1);
+
+    // Draw shadow first
+    canvas.drawRRect(faceRect, shadowPaint);
+    // Draw main rounded rectangle
+    canvas.drawRRect(faceRect, paint);
   }
 
   @override
@@ -54,5 +66,5 @@ RRect _scaleRect(
       rect.top.toDouble() * scaleY,
       widgetSize.width - rect.right.toDouble() * scaleX,
       rect.bottom.toDouble() * scaleY,
-      Radius.circular(10));
+      const Radius.circular(16));
 }

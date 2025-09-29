@@ -4,6 +4,7 @@ import 'dart:developer';
 import 'package:face_recognition_auth/face_recognition_auth.dart';
 import 'package:face_recognition_auth/src/isolate/frame_request.dart';
 import 'package:face_recognition_auth/src/isolate/isolate_helper.dart';
+import 'package:face_recognition_auth/src/services/improved_anti_spoofing_service.dart';
 import 'package:flutter/services.dart';
 
 class FaceAuthIsolate {
@@ -12,11 +13,13 @@ class FaceAuthIsolate {
   late CameraService _cameraService;
   late DatabaseHelper _database;
   late FaceDetectorService _faceDetectorService;
+  late ImprovedAntiSpoofingService _antiSpoofingService;
   bool _initialized = false;
   final bool _dbInitialized = false;
   late IsolateHelper _isolateHelper;
   bool _processing = false;
   bool _detectFaceProcessing = false;
+  bool _errorAlreadyCalled = false;
 
   CameraService get cameraService => _cameraService;
 
@@ -25,13 +28,14 @@ class FaceAuthIsolate {
   late Uint8List modelBytes;
 
   int frameCount = 0;
-  final int skipFrames = 14;
+  final int skipFrames = 20; // Increased to reduce processing load
 
   /// Initialize services
   Future<void> initialize() async {
     _database = DatabaseHelper.instance;
     _cameraService = CameraService();
     _faceDetectorService = FaceDetectorService(_cameraService);
+    _antiSpoofingService = ImprovedAntiSpoofingService();
     await _cameraService.initialize();
     _faceDetectorService.initialize();
     _initialized = true;
@@ -55,9 +59,12 @@ class FaceAuthIsolate {
     Duration timeout = const Duration(seconds: 20),
     FaceAuthProgress? onProgress,
     FaceDetectionCallback? onFaceDetected,
+    FaceAuthErrorCallback? onError,
     required String userId,
+    AntiSpoofingConfig? antiSpoofingConfig,
   }) async {
     if (!_initialized) await initialize();
+    _errorAlreadyCalled = false; // Reset error flag for new registration
 
     //init isolate
     _isolateHelper = IsolateHelper();
@@ -69,7 +76,9 @@ class FaceAuthIsolate {
       rootIsolateToken: rootToken,
     );
 
-    if (_processing) throw StateError('Another operation in progress');
+    if (_processing) {
+      throw FaceAuthError.fromType(FaceAuthErrorType.operationInProgress);
+    }
 
     _processing = true;
 
@@ -82,7 +91,16 @@ class FaceAuthIsolate {
       watchdog?.cancel();
       log("error $error");
       onProgress?.call(FaceAuthState.failed);
-      if (!completer.isCompleted) completer.completeError(error);
+
+      // Convert error to FaceAuthError if it's not already
+      final faceAuthError = error is FaceAuthError
+          ? error
+          : FaceAuthError.fromMessage(error.toString());
+
+      // Call onError callback if provided
+      onError?.call(faceAuthError);
+
+      if (!completer.isCompleted) completer.completeError(faceAuthError);
     }
 
     void finishOk(User user) async {
@@ -94,7 +112,8 @@ class FaceAuthIsolate {
     }
 
     watchdog = Timer(timeout, () {
-      finishError(TimeoutException("Registration timed out"));
+      finishError(
+          FaceAuthError.fromType(FaceAuthErrorType.registrationTimeout));
       onProgress?.call(FaceAuthState.timeout);
     });
 
@@ -105,6 +124,10 @@ class FaceAuthIsolate {
         frameCount++;
 
         if (frameCount % skipFrames != 0) return;
+
+        // Additional check to prevent processing if already busy (buffer overflow prevention)
+        if (_detectFaceProcessing) return;
+
         onProgress?.call(FaceAuthState.detectingFace);
         final faces = await _faceDetectorService.detectFacesFromImage(image);
         if (faces.isEmpty) {
@@ -113,11 +136,57 @@ class FaceAuthIsolate {
         } else {
           onFaceDetected?.call(faces, image);
         }
-
-        if (_detectFaceProcessing) return;
         _detectFaceProcessing = true;
 
         final face = faces.first;
+
+        // Use default anti-spoofing config if not provided
+        final config =
+            antiSpoofingConfig ?? AntiSpoofingConfig.handShakeResistant();
+
+        // Perform anti-spoofing check if enabled
+        if (config.enabled && !_errorAlreadyCalled) {
+          onProgress?.call(FaceAuthState.antiSpoofingCheck);
+          final antiSpoofingResult = await _antiSpoofingService.analyzeFrame(
+            image,
+            face,
+            requireActiveLiveness: config.requireActiveLiveness,
+          );
+
+          if (config.enableDebugLogging) {
+            log('Anti-spoofing result: $antiSpoofingResult');
+          }
+
+          // Only check for spoofing if we have enough data and high confidence in spoofing
+          if (antiSpoofingResult.hasEnoughData &&
+              !antiSpoofingResult.isLive &&
+              antiSpoofingResult.confidence > config.minConfidenceThreshold) {
+            // Determine specific spoofing type
+            FaceAuthErrorType spoofingType = FaceAuthErrorType.spoofingDetected;
+            if (antiSpoofingResult.recommendations
+                .any((r) => r.toLowerCase().contains('photo'))) {
+              spoofingType = FaceAuthErrorType.photoAttackDetected;
+            } else if (antiSpoofingResult.recommendations
+                .any((r) => r.toLowerCase().contains('screen'))) {
+              spoofingType = FaceAuthErrorType.screenAttackDetected;
+            } else if (antiSpoofingResult.recommendations
+                .any((r) => r.toLowerCase().contains('liveness'))) {
+              spoofingType = FaceAuthErrorType.insufficientLivenessData;
+            }
+
+            _errorAlreadyCalled = true;
+            finishError(FaceAuthError.fromType(spoofingType,
+                details: antiSpoofingResult.recommendations.join(' ')));
+            _detectFaceProcessing = false;
+            return;
+          }
+
+          // If we don't have enough data yet, continue collecting
+          if (!antiSpoofingResult.hasEnoughData) {
+            _detectFaceProcessing = false;
+            return;
+          }
+        }
 
         if (!_cameraService.cameraController!.value.isStreamingImages) return;
         final FrameResponse res = await _isolateHelper.sendAndWait(
@@ -132,10 +201,30 @@ class FaceAuthIsolate {
 
         if (res.success) {
           finishOk(res.user!);
-          log("mano ${res.msg}");
+          log("success ${res.msg}");
         } else {
-          log("mano ${res.msg}");
-          // finishError(StateError(res.msg ?? "Unknown error"));
+          // Check if this is just a sample collection progress message
+          if (res.msg?.contains('Collecting samples:') == true) {
+            // This is just progress, not an error - continue collecting samples
+            log("Collecting samples: ${res.msg}");
+            onProgress?.call(FaceAuthState.collectingSamples);
+          } else if (res.msg?.contains('Face already registered') == true) {
+            // Face already exists - this is a real error with more specific message
+            finishError(FaceAuthError.fromMessage(
+                res.msg ?? 'Face already registered'));
+          } else if (res.msg?.contains('User ID already exists') == true) {
+            // User ID already exists - this is a real error
+            finishError(
+                FaceAuthError.fromMessage(res.msg ?? 'User ID already exists'));
+          } else if (res.msg?.contains('No face detected') == true) {
+            // No face detected - this is normal during face detection, not an error
+            log("No face detected: ${res.msg}");
+            // Continue processing, don't call finishError
+          } else {
+            // Other errors
+            log("error ${res.msg}");
+            finishError(FaceAuthError.fromMessage(res.msg ?? 'Unknown error'));
+          }
         }
       } catch (e) {
         finishError(e);
@@ -152,8 +241,11 @@ class FaceAuthIsolate {
     Duration timeout = const Duration(seconds: 15),
     FaceAuthProgress? onProgress,
     FaceDetectionCallback? onFaceDetected,
+    FaceAuthErrorCallback? onError,
+    AntiSpoofingConfig? antiSpoofingConfig,
   }) async {
     if (!_initialized) await initialize();
+    _errorAlreadyCalled = false; // Reset error flag for new login
     _isolateHelper = IsolateHelper();
     final rootToken = RootIsolateToken.instance!;
 
@@ -162,7 +254,9 @@ class FaceAuthIsolate {
       interpreterBytes: modelBytes,
       rootIsolateToken: rootToken,
     );
-    if (_processing) throw StateError('Another operation in progress');
+    if (_processing) {
+      throw FaceAuthError.fromType(FaceAuthErrorType.operationInProgress);
+    }
     _processing = true;
 
     final completer = Completer<User?>();
@@ -187,6 +281,10 @@ class FaceAuthIsolate {
         frameCount++;
 
         if (frameCount % skipFrames != 0) return;
+
+        // Additional check to prevent processing if already busy (buffer overflow prevention)
+        if (_detectFaceProcessing) return;
+
         onProgress?.call(FaceAuthState.detectingFace);
         final faces = await _faceDetectorService.detectFacesFromImage(image);
         if (faces.isEmpty) {
@@ -196,11 +294,59 @@ class FaceAuthIsolate {
         } else {
           onFaceDetected?.call(faces, image);
         }
-
-        if (_detectFaceProcessing) return;
         _detectFaceProcessing = true;
 
         final face = faces.first;
+
+        // Use default anti-spoofing config if not provided
+        final config =
+            antiSpoofingConfig ?? AntiSpoofingConfig.handShakeResistant();
+
+        // Perform anti-spoofing check if enabled
+        if (config.enabled && !_errorAlreadyCalled) {
+          onProgress?.call(FaceAuthState.antiSpoofingCheck);
+          final antiSpoofingResult = await _antiSpoofingService.analyzeFrame(
+            image,
+            face,
+            requireActiveLiveness: config.requireActiveLiveness,
+          );
+
+          if (config.enableDebugLogging) {
+            log('Anti-spoofing result: $antiSpoofingResult');
+          }
+
+          // Only check for spoofing if we have enough data and high confidence in spoofing
+          if (antiSpoofingResult.hasEnoughData &&
+              !antiSpoofingResult.isLive &&
+              antiSpoofingResult.confidence > config.minConfidenceThreshold) {
+            // Determine specific spoofing type
+            FaceAuthErrorType spoofingType = FaceAuthErrorType.spoofingDetected;
+            if (antiSpoofingResult.recommendations
+                .any((r) => r.toLowerCase().contains('photo'))) {
+              spoofingType = FaceAuthErrorType.photoAttackDetected;
+            } else if (antiSpoofingResult.recommendations
+                .any((r) => r.toLowerCase().contains('screen'))) {
+              spoofingType = FaceAuthErrorType.screenAttackDetected;
+            } else if (antiSpoofingResult.recommendations
+                .any((r) => r.toLowerCase().contains('liveness'))) {
+              spoofingType = FaceAuthErrorType.insufficientLivenessData;
+            }
+
+            _errorAlreadyCalled = true;
+            // Call onError callback if provided
+            onError?.call(FaceAuthError.fromType(spoofingType,
+                details: antiSpoofingResult.recommendations.join(' ')));
+            finish(null, FaceAuthState.spoofingDetected);
+            _detectFaceProcessing = false;
+            return;
+          }
+
+          // If we don't have enough data yet, continue collecting
+          if (!antiSpoofingResult.hasEnoughData) {
+            _detectFaceProcessing = false;
+            return;
+          }
+        }
 
         final FrameResponse res = await _isolateHelper.sendAndWait(
           FrameRequest(image: image, face: face, requiredSamples: 1),
@@ -215,6 +361,13 @@ class FaceAuthIsolate {
           // finish(null, FaceAuthState.failed);
         }
       } catch (e) {
+        // Convert error to FaceAuthError if it's not already
+        final faceAuthError =
+            e is FaceAuthError ? e : FaceAuthError.fromMessage(e.toString());
+
+        // Call onError callback if provided
+        onError?.call(faceAuthError);
+
         finish(null, FaceAuthState.failed);
       } finally {
         _detectFaceProcessing = false;

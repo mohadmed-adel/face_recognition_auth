@@ -269,7 +269,7 @@ class MLService {
     return dot / denom;
   }
 
-  void setPredictedData(value) {
+  void setPredictedData(dynamic value) {
     _predictedData = value;
   }
 

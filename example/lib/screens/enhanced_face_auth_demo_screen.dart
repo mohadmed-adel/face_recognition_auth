@@ -62,7 +62,7 @@ class _EnhancedFaceAuthDemoScreenState
       userId: userId,
       samples: 3,
       onProgress: (state) {
-        print('Registration progress: $state');
+        // Registration progress: $state
       },
       onDone: (user) {
         if (user != null) {
@@ -80,7 +80,7 @@ class _EnhancedFaceAuthDemoScreenState
 
     await _controller.login(
       onProgress: (state) {
-        print('Login progress: $state');
+        // Login progress: $state
       },
       onDone: (user) {
         if (user != null) {
@@ -129,11 +129,7 @@ class _EnhancedFaceAuthDemoScreenState
         ],
       ),
       body: _isInitialized
-          ? FaceAuthView(
-              controller: _controller,
-              showSettings: _showSettings,
-              showLivenessPrompts: _showLivenessPrompts,
-            )
+          ? FaceAuthView(controller: _controller)
           : const Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -197,6 +193,19 @@ class _EnhancedFaceAuthDemoScreenState
                               foregroundColor: Colors.white,
                             ),
                             child: const Text('High Security'),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: () => _configureAntiSpoofing(
+                              AntiSpoofingConfig.screenResistant(),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.deepOrange,
+                              foregroundColor: Colors.white,
+                            ),
+                            child: const Text('Screen Resistant'),
                           ),
                         ),
                       ],

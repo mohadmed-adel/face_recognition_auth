@@ -27,8 +27,10 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
     try {
       await _controller.initializeDatabaseOnly();
       final users = await _controller.getAllUsers();
-      final appState = Provider.of<AppStateProvider>(context, listen: false);
-      appState.updateUsers(users);
+      if (mounted) {
+        final appState = Provider.of<AppStateProvider>(context, listen: false);
+        appState.updateUsers(users);
+      }
     } catch (e) {
       _showErrorDialog('Failed to load users: $e');
     } finally {
@@ -46,8 +48,10 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
 
     try {
       await _controller.deleteUser(userId);
-      final appState = Provider.of<AppStateProvider>(context, listen: false);
-      appState.removeUser(userId);
+      if (mounted) {
+        final appState = Provider.of<AppStateProvider>(context, listen: false);
+        appState.removeUser(userId);
+      }
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -72,8 +76,10 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
 
     try {
       await _controller.deleteAllUsers();
-      final appState = Provider.of<AppStateProvider>(context, listen: false);
-      appState.clearAllUsers();
+      if (mounted) {
+        final appState = Provider.of<AppStateProvider>(context, listen: false);
+        appState.clearAllUsers();
+      }
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -180,237 +186,238 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
   }
 
   Widget _buildDetailRow(String label, String value) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SizedBox(
-              width: 100,
-              child: Text(
-                '$label:',
-                style: const TextStyle(fontWeight: FontWeight.w500),
-              ),
-            ),
-            Expanded(
-              child: Text(value),
-            ),
-          ],
+    padding: const EdgeInsets.symmetric(vertical: 4),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 100,
+          child: Text(
+            '$label:',
+            style: const TextStyle(fontWeight: FontWeight.w500),
+          ),
         ),
-      );
+        Expanded(child: Text(value)),
+      ],
+    ),
+  );
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(
-          title: const Text('User Management'),
-          backgroundColor: Colors.orange.shade600,
-          foregroundColor: Colors.white,
-          actions: [
-            IconButton(
-              onPressed: _loadUsers,
-              icon: const Icon(Icons.refresh),
-              tooltip: 'Refresh',
-            ),
-          ],
+    appBar: AppBar(
+      title: const Text('User Management'),
+      backgroundColor: Colors.orange.shade600,
+      foregroundColor: Colors.white,
+      actions: [
+        IconButton(
+          onPressed: _loadUsers,
+          icon: const Icon(Icons.refresh),
+          tooltip: 'Refresh',
         ),
-        body: Consumer<AppStateProvider>(
-          builder: (context, appState, _) {
-            if (_isLoading) {
-              return const Center(child: CircularProgressIndicator());
-            }
+      ],
+    ),
+    body: Consumer<AppStateProvider>(
+      builder: (context, appState, _) {
+        if (_isLoading) {
+          return const Center(child: CircularProgressIndicator());
+        }
 
-            final users = appState.registeredUsers;
+        final users = appState.registeredUsers;
 
-            return Column(
-              children: [
-                // Header Stats
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Card(
-                          child: Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: Column(
-                              children: [
-                                const Icon(Icons.people,
-                                    color: Colors.blue, size: 32),
-                                const SizedBox(height: 8),
-                                Text(
-                                  '${users.length}',
-                                  style: const TextStyle(
-                                    fontSize: 24,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                const Text('Registered Users'),
-                              ],
+        return Column(
+          children: [
+            // Header Stats
+            Container(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          children: [
+                            const Icon(
+                              Icons.people,
+                              color: Colors.blue,
+                              size: 32,
                             ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Card(
-                          child: Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: Column(
-                              children: [
-                                const Icon(Icons.face,
-                                    color: Colors.green, size: 32),
-                                const SizedBox(height: 8),
-                                Text(
-                                  '${users.fold(0, (sum, user) => sum + user.modelData.length)}',
-                                  style: const TextStyle(
-                                    fontSize: 24,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                const Text('Face Samples'),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                // Users List
-                Expanded(
-                  child: users.isEmpty
-                      ? _buildEmptyState()
-                      : ListView.builder(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          itemCount: users.length,
-                          itemBuilder: (context, index) {
-                            final user = users[index];
-                            return Card(
-                              margin: const EdgeInsets.only(bottom: 8),
-                              child: ListTile(
-                                leading: CircleAvatar(
-                                  backgroundColor: Colors.blue.shade100,
-                                  child: Icon(
-                                    Icons.person,
-                                    color: Colors.blue.shade600,
-                                  ),
-                                ),
-                                title: Text(
-                                  user.id,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                subtitle: Text(
-                                    '${user.modelData.length} face samples'),
-                                trailing: PopupMenuButton<String>(
-                                  onSelected: (value) {
-                                    switch (value) {
-                                      case 'details':
-                                        _showUserDetails(user);
-                                        break;
-                                      case 'delete':
-                                        _deleteUser(user.id);
-                                        break;
-                                    }
-                                  },
-                                  itemBuilder: (context) => [
-                                    const PopupMenuItem(
-                                      value: 'details',
-                                      child: Row(
-                                        children: [
-                                          Icon(Icons.info_outline),
-                                          SizedBox(width: 8),
-                                          Text('View Details'),
-                                        ],
-                                      ),
-                                    ),
-                                    const PopupMenuItem(
-                                      value: 'delete',
-                                      child: Row(
-                                        children: [
-                                          Icon(Icons.delete, color: Colors.red),
-                                          SizedBox(width: 8),
-                                          Text(
-                                            'Delete',
-                                            style: TextStyle(color: Colors.red),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                onTap: () => _showUserDetails(user),
+                            const SizedBox(height: 8),
+                            Text(
+                              '${users.length}',
+                              style: const TextStyle(
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
                               ),
-                            );
-                          },
-                        ),
-                ),
-
-                // Action Buttons
-                if (users.isNotEmpty)
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      children: [
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton.icon(
-                            onPressed: _deleteAllUsers,
-                            icon: const Icon(Icons.delete_sweep),
-                            label: const Text('Delete All Users'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.red,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 16),
                             ),
-                          ),
+                            const Text('Registered Users'),
+                          ],
                         ),
-                      ],
+                      ),
                     ),
                   ),
-              ],
-            );
-          },
-        ),
-      );
-
-  Widget _buildEmptyState() => Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.people_outline,
-              size: 64,
-              color: Colors.grey.shade400,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'No Users Registered',
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    color: Colors.grey.shade600,
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          children: [
+                            const Icon(
+                              Icons.face,
+                              color: Colors.green,
+                              size: 32,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              '${users.fold(0, (sum, user) => sum + user.modelData.length)}',
+                              style: const TextStyle(
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const Text('Face Samples'),
+                          ],
+                        ),
+                      ),
+                    ),
                   ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Register some users to see them here',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Colors.grey.shade500,
-                  ),
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton.icon(
-              onPressed: () => Navigator.of(context).pop(),
-              icon: const Icon(Icons.person_add),
-              label: const Text('Register New User'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue,
-                foregroundColor: Colors.white,
+                ],
               ),
             ),
+
+            // Users List
+            Expanded(
+              child: users.isEmpty
+                  ? _buildEmptyState()
+                  : ListView.builder(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      itemCount: users.length,
+                      itemBuilder: (context, index) {
+                        final user = users[index];
+                        return Card(
+                          margin: const EdgeInsets.only(bottom: 8),
+                          child: ListTile(
+                            leading: CircleAvatar(
+                              backgroundColor: Colors.blue.shade100,
+                              child: Icon(
+                                Icons.person,
+                                color: Colors.blue.shade600,
+                              ),
+                            ),
+                            title: Text(
+                              user.id,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            subtitle: Text(
+                              '${user.modelData.length} face samples',
+                            ),
+                            trailing: PopupMenuButton<String>(
+                              onSelected: (value) {
+                                switch (value) {
+                                  case 'details':
+                                    _showUserDetails(user);
+                                    break;
+                                  case 'delete':
+                                    _deleteUser(user.id);
+                                    break;
+                                }
+                              },
+                              itemBuilder: (context) => [
+                                const PopupMenuItem(
+                                  value: 'details',
+                                  child: Row(
+                                    children: [
+                                      Icon(Icons.info_outline),
+                                      SizedBox(width: 8),
+                                      Text('View Details'),
+                                    ],
+                                  ),
+                                ),
+                                const PopupMenuItem(
+                                  value: 'delete',
+                                  child: Row(
+                                    children: [
+                                      Icon(Icons.delete, color: Colors.red),
+                                      SizedBox(width: 8),
+                                      Text(
+                                        'Delete',
+                                        style: TextStyle(color: Colors.red),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                            onTap: () => _showUserDetails(user),
+                          ),
+                        );
+                      },
+                    ),
+            ),
+
+            // Action Buttons
+            if (users.isNotEmpty)
+              Container(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  children: [
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: _deleteAllUsers,
+                        icon: const Icon(Icons.delete_sweep),
+                        label: const Text('Delete All Users'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
           ],
+        );
+      },
+    ),
+  );
+
+  Widget _buildEmptyState() => Center(
+    child: Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(Icons.people_outline, size: 64, color: Colors.grey.shade400),
+        const SizedBox(height: 16),
+        Text(
+          'No Users Registered',
+          style: Theme.of(
+            context,
+          ).textTheme.headlineSmall?.copyWith(color: Colors.grey.shade600),
         ),
-      );
+        const SizedBox(height: 8),
+        Text(
+          'Register some users to see them here',
+          style: Theme.of(
+            context,
+          ).textTheme.bodyMedium?.copyWith(color: Colors.grey.shade500),
+        ),
+        const SizedBox(height: 24),
+        ElevatedButton.icon(
+          onPressed: () => Navigator.of(context).pop(),
+          icon: const Icon(Icons.person_add),
+          label: const Text('Register New User'),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.blue,
+            foregroundColor: Colors.white,
+          ),
+        ),
+      ],
+    ),
+  );
 
   @override
   void dispose() {

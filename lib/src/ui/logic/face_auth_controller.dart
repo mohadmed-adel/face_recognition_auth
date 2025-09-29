@@ -18,7 +18,8 @@ class FaceAuthController extends ChangeNotifier {
 
   // Anti-spoofing related state
   AntiSpoofingResult? _antiSpoofingResult;
-  AntiSpoofingConfig _antiSpoofingConfig = AntiSpoofingConfig.balanced();
+  AntiSpoofingConfig _antiSpoofingConfig =
+      AntiSpoofingConfig.handShakeResistant();
   List<String> _livenessPrompts = [];
   bool _showLivenessPrompt = false;
 
@@ -92,7 +93,7 @@ class FaceAuthController extends ChangeNotifier {
     int samples = 4,
     void Function(User? user)? onDone,
     FaceAuthProgress? onProgress,
-    void Function(String error)? onError,
+    FaceAuthErrorCallback? onError,
     required String userId,
     AntiSpoofingConfig? antiSpoofingConfig,
   }) async {
@@ -109,16 +110,27 @@ class FaceAuthController extends ChangeNotifier {
           onProgress?.call(data);
         },
         onFaceDetected: _updateFace,
+        onError: (error) {
+          _errorMessage = error.userMessage;
+          _setState(FaceAuthState.failed);
+          _clearLivenessPrompts();
+          onError?.call(error);
+        },
         userId: userId,
+        antiSpoofingConfig: antiSpoofingConfig,
       );
 
       _setState(FaceAuthState.success);
       _clearLivenessPrompts();
     } catch (e) {
-      _errorMessage = e.toString();
+      // Convert error to FaceAuthError if it's not already
+      final faceAuthError =
+          e is FaceAuthError ? e : FaceAuthError.fromMessage(e.toString());
+
+      _errorMessage = faceAuthError.userMessage;
       _setState(FaceAuthState.failed);
       _clearLivenessPrompts();
-      onError?.call(_errorMessage!);
+      onError?.call(faceAuthError);
     }
 
     onDone?.call(_user);
@@ -128,7 +140,7 @@ class FaceAuthController extends ChangeNotifier {
   Future<void> login({
     void Function(User? user)? onDone,
     FaceAuthProgress? onProgress,
-    void Function(String error)? onError,
+    FaceAuthErrorCallback? onError,
     AntiSpoofingConfig? antiSpoofingConfig,
   }) async {
     if (_disposed) throw StateError('Controller is disposed');
@@ -143,15 +155,26 @@ class FaceAuthController extends ChangeNotifier {
           _handleAntiSpoofingState(data);
           onProgress?.call(data);
         },
+        onError: (error) {
+          _errorMessage = error.userMessage;
+          _setState(FaceAuthState.failed);
+          _clearLivenessPrompts();
+          onError?.call(error);
+        },
+        antiSpoofingConfig: antiSpoofingConfig,
       );
 
       _setState(FaceAuthState.success);
       _clearLivenessPrompts();
     } catch (e) {
-      _errorMessage = e.toString();
+      // Convert error to FaceAuthError if it's not already
+      final faceAuthError =
+          e is FaceAuthError ? e : FaceAuthError.fromMessage(e.toString());
+
+      _errorMessage = faceAuthError.userMessage;
       _setState(FaceAuthState.failed);
       _clearLivenessPrompts();
-      onError?.call(_errorMessage!);
+      onError?.call(faceAuthError);
     }
 
     onDone?.call(_user);
@@ -232,6 +255,14 @@ class FaceAuthController extends ChangeNotifier {
   void clearError() {
     if (_disposed) return;
     _errorMessage = null;
+    notifyListeners();
+  }
+
+  /// Reset controller state for retry
+  void reset() {
+    if (_disposed) return;
+    _resetUser();
+    _state = null;
     notifyListeners();
   }
 
